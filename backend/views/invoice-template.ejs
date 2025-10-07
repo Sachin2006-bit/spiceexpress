@@ -1,0 +1,237 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tax Invoice - <%= invoice && (invoice.invoiceNo || invoice.invoiceNumber) ? (invoice.invoiceNo || invoice.invoiceNumber) : '' %></title>
+    <style>
+      /* Page and layout */
+  @page { margin: 10mm; }
+      *, *:before, *:after { box-sizing: border-box; }
+  html,body { height:100%; margin:0; padding:0; font-family: 'Helvetica', Arial, sans-serif; color:#222; font-size:11px }
+      .page { width:100%; padding:8px; }
+      /* Constrain printable area for typical A4/PDF rendering */
+  .container { width:100%; max-width:700px; margin:0 auto; box-sizing:border-box; padding:4px; }
+
+      /* Header */
+  .header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; border:3px solid #2b79c2; padding:8px; flex-wrap:wrap; }
+  .logo img { display:block; max-width:100px; height:auto; }
+      .title { text-align:center; flex:1; }
+  .title h1 { margin:0; font-size:24px; letter-spacing:1px; }
+      .title .sub { font-size:10px; color:#666; margin-top:4px; }
+  .right-note { width:140px; text-align:right; font-size:11px; color:#333; min-width:0 }
+
+      /* Top info grid */
+  .top-grid { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .left-col { flex:1; padding:6px; min-width:0 }
+  .right-col { width:220px; padding:6px; min-width:0 }
+
+      .key { color:#2b79c2; font-weight:600; display:inline-block }
+
+      /* Customer block */
+  .panel { border:3px solid #2b79c2; margin-top:12px; }
+  .customer-block { display:flex; gap:8px; padding:6px; flex-wrap:wrap }
+  .customer-left, .customer-right { padding:6px; min-width:0 }
+  .customer-left { flex:1; border-right:1px solid #e6f1fb }
+  .customer-right { width:260px }
+
+  .summary { border-top:1px solid #99c3ee; display:flex; gap:8px; padding:6px; }
+  .summary .cell { flex:1; text-align:center; border-right:1px solid #99c3ee; padding:6px 4px; }
+  .summary .cell .value { font-weight:800; color:#0b63a8; font-size:13px }
+      .summary .cell:last-child { border-right:none }
+
+      /* Lines table */
+  .lines { width:100%; margin-top:10px; border-collapse:collapse; table-layout:fixed; }
+  .lines td, .lines th { padding:6px 6px; border-bottom:1px solid #e6f1fb; font-size:11px; word-break:break-word; white-space:normal }
+      .lines th { text-align:left; color:#064d7b; font-weight:700 }
+      .right { text-align:right }
+
+      /* Charges column */
+      .charges { border-left:2px solid #e8f4ff; padding-left:12px }
+      .charges .line { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f2f8ff }
+  .total-row { background:transparent; color:#000; font-weight:700 }
+  .amount-box { background:#2b79c2; color:#fff; display:inline-block; padding:6px 14px; border-radius:2px; font-weight:700 }
+
+      /* Helpers */
+      .small { font-size:11px }
+      .muted { color:#666 }
+  .blue-band { background:#2b79c2; color:#fff; padding:6px; font-size:11px; margin-top:8px }
+  .footer-box { border:1px solid #2b79c2; padding:6px; margin-top:6px; font-size:11px }
+
+  /* Page footer */
+  .page-footer { margin-top:8px; font-size:11px; text-align:center; color:#333 }
+
+      /* Prevent overflow */
+  img { max-width:100%; height:auto; display:block }
+  .wrap { word-break:break-word; overflow-wrap:anywhere }
+      .flex-row { display:flex; gap:12px; }
+      .flex-3 { flex:3 }
+      .flex-1 { flex:1 }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="container">
+  <div class="header">
+          <div class="logo">
+            <% if (invoice && invoice.logo) { %>
+              <img src="<%= invoice.logo %>" alt="logo" />
+            <% } else { %>
+              <img src="/uploads/spice-logo.svg" alt="SPICE EXPRESS" />
+            <% } %>
+          </div>
+
+          <div class="title">
+            <h1>TAX INVOICE</h1>
+            <div class="sub">ORIGINAL FOR RECIPIENT</div>
+          </div>
+
+          <div class="right-note">
+            <div style="font-weight:700; color:#2b79c2">Invoice No:</div>
+            <div><%= invoice && (invoice.invoiceNo || invoice.invoiceNumber) ? (invoice.invoiceNo || invoice.invoiceNumber) : 'MH/NGP/2025/461' %></div>
+            <div style="margin-top:6px"><span style="font-weight:700; color:#2b79c2">Invoice Date:</span> <%= invoice && (invoice.invoiceDate || invoice.date) ? (invoice.invoiceDate || invoice.date) : '' %></div>
+            <div><span style="font-weight:700; color:#2b79c2">Invoice Date:</span> <%= invoice && (invoice.invoiceDate || invoice.date) ? (invoice.invoiceDate || invoice.date) : '09-08-2025' %></div>
+            <div><span style="font-weight:700; color:#2b79c2">Invoice Due Date:</span> <%= invoice && invoice.dueDate ? invoice.dueDate : '09-09-2025' %></div>
+            <div style="margin-top:6px"><span style="font-weight:700; color:#2b79c2">Billing OU:</span> <%= invoice && invoice.billingOU ? invoice.billingOU : '' %></div>
+            <div><span style="font-weight:700; color:#2b79c2">PO Number:</span> <%= invoice && invoice.poNumber ? invoice.poNumber : '' %></div>
+            <div style="margin-top:10px; font-size:11px; color:#666">Page 1 of 2</div>
+          </div>
+        </div>
+
+    <div class="top-grid">
+          <div class="left-col">
+      <div style="font-weight:700; color:#2b79c2; margin-bottom:6px">Supplier Name:</div>
+      <div style="font-weight:700"><%= invoice && invoice.supplierName ? invoice.supplierName : 'SPICE EXPRESS' %></div>
+      <div style="margin-top:6px">Supplier GSTIN: <span style="font-weight:700"><%= invoice && invoice.supplierGstin ? invoice.supplierGstin : '27AEMFS2408G1ZY' %></span></div>
+      <div style="margin-top:6px">State Code(LOS): <span style="font-weight:700"><%= invoice && invoice.stateCodeLOS ? invoice.stateCodeLOS : '27 - Maharashtra' %></span></div>
+      <div style="margin-top:8px">Billing Address:</div>
+      <div class="small muted"><%= invoice && invoice.billingAddress ? invoice.billingAddress : 'Block D, Plot No. D 464, Martin nagar, Mankapur, Nagpur 440002' %></div>
+          </div>
+
+          <div class="right-col" style="border-left:2px solid #2b79c2;">
+            <div style="font-size:12px; color:#2b79c2; font-weight:700">Invoice Details</div>
+            <div style="margin-top:6px">No: <strong><%= invoice && (invoice.invoiceNo || invoice.invoiceNumber) ? (invoice.invoiceNo || invoice.invoiceNumber) : '' %></strong></div>
+            <div style="margin-top:4px">Date: <strong><%= invoice && (invoice.invoiceDate || invoice.date) ? (invoice.invoiceDate || invoice.date) : '' %></strong></div>
+            <div style="margin-top:4px">Due: <strong><%= invoice && invoice.dueDate ? invoice.dueDate : '' %></strong></div>
+            <div style="margin-top:6px">HSN : <strong><%= invoice && invoice.hsn ? invoice.hsn : '9966' %></strong></div>
+            <div style="margin-top:8px">Billing OU: <strong>NAGPUR</strong></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="customer-block">
+            <div class="customer-block">
+              <div class="customer-left">
+                <div><span class="key">Contract No:</span> <%= invoice && invoice.contractNo ? invoice.contractNo : '' %></div>
+                <div style="margin-top:6px"><span class="key">Customer Code:</span> <%= customer && customer.code ? customer.code : (invoice && invoice.customerCode ? invoice.customerCode : '100397') %></div>
+                <div style="margin-top:6px"><span class="key">GSTIN:</span> <%= customer && (customer.gstin || customer.gstNumber) ? (customer.gstin || customer.gstNumber) : '27AABCS1624G2ZM' %></div>
+                <div style="margin-top:6px"><span class="key">Address:</span> <%= customer && customer.address ? customer.address : 'DSP Ahmednagar Stocking Plant , MIDC Industries' %></div>
+                <div style="margin-top:6px"><span class="key">Pincode:</span> <%= customer && customer.pincode ? customer.pincode : '414111' %></div>
+                <div style="margin-top:6px"><span class="key">Contact Details:</span> <%= customer && customer.contact ? customer.contact : '' %></div>
+              </div>
+              <div class="customer-right">
+                <div style="font-weight:700">Legal Name: <span style="font-weight:400"><%= customer && customer.legalName ? customer.legalName : 'Schneider Electric India Pvt. ltd Ahmednagar' %></span></div>
+                <div style="margin-top:6px">Trade Name: <span style="font-weight:400"><%= customer && customer.tradeName ? customer.tradeName : 'Schneider Electric India Pvt. ltd Ahmednagar' %></span></div>
+                <div style="margin-top:6px">State Code(POS): <span style="font-weight:400">27 - Maharashtra</span></div>
+              </div>
+            </div>
+          <div class="summary">
+            <div class="cell"><div class="small muted">Current Bills</div><div style="font-weight:700; margin-top:6px"><%= invoice.currentBills?.toFixed(2) || (invoice.totalAmount? invoice.totalAmount.toFixed(2) : '6608.00') %></div></div>
+            <div class="cell"><div class="small muted">Past Payment Due</div><div style="font-weight:700; margin-top:6px"><%= invoice.pastDue?.toFixed(2) || '' %></div></div>
+            <div class="cell"><div class="small muted">Total Outstanding</div><div style="font-weight:700; margin-top:6px"><%= invoice.totalOutstanding?.toFixed(2) || (invoice.totalAmount? invoice.totalAmount.toFixed(2) : '6608.00') %></div></div>
+            <div class="cell"><div class="small muted">Kindly remit Past Payment Due to avoid service disruption</div></div>
+          </div>
+        </div>
+
+  <div style="margin-top:12px; font-weight:700">Docket wise Details</div>
+  <table class="lines" role="presentation">
+          <tr>
+            <th style="width:20%">LR No</th>
+            <th style="width:20%">Date</th>
+            <th style="width:20%">Origin</th>
+            <th style="width:20%">Destination</th>
+            <th style="width:10%; text-align:center">Nos / Kg</th>
+            <th style="width:10%; text-align:right">Amount in Rs.</th>
+          </tr>
+          <% lrs.forEach(function(lr) { %>
+            <tr>
+              <td><%= lr.lrNumber %></td>
+              <td><%= lr.bookingDate ? new Date(lr.bookingDate).toLocaleDateString() : '' %></td>
+              <td><%= lr.consignor?.city || '-' %></td>
+              <td><%= lr.consignee?.city || '-' %></td>
+              <td style="text-align:center"><%= lr.shipmentDetails?.chargedWeight || lr.shipmentDetails?.actualWeight || '-' %></td>
+              <td class="right"><%= lr.charges?.grandTotal?.toFixed(2) || lr.amount?.toFixed(2) || '0.00' %></td>
+            </tr>
+          <% }) %>
+          <tr>
+            <td colspan="5" style="text-align:right; font-weight:700">Total Freight Value</td>
+            <td class="right"><%= invoice && invoice.freightValue ? invoice.freightValue.toFixed(2) : '0.00' %></td>
+          </tr>
+          <tr>
+            <td colspan="5" style="text-align:right; font-weight:700">CGST</td>
+            <td class="right"><%= invoice && invoice.cgst ? invoice.cgst.toFixed(2) : '0.00' %></td>
+          </tr>
+          <tr>
+            <td colspan="5" style="text-align:right; font-weight:700">SGST/UGST</td>
+            <td class="right"><%= invoice && invoice.sgst ? invoice.sgst.toFixed(2) : '0.00' %></td>
+          </tr>
+          <tr>
+            <td colspan="5" style="text-align:right; font-weight:700">IGST</td>
+            <td class="right"><%= invoice && invoice.igst ? invoice.igst.toFixed(2) : '0.00' %></td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="5" style="text-align:right; font-weight:700">Total Invoice Value</td>
+            <td class="right" style="font-weight:700"><%= invoice && invoice.totalAmount ? invoice.totalAmount.toFixed(2) : '0.00' %></td>
+          </tr>
+        </table>
+
+        <div style="margin-top:10px;">Amount in words: <strong><%= invoice && invoice.amountInWords ? invoice.amountInWords : 'Six Thousand Six Hundred and Eight Rupees Only' %></strong></div>
+
+  <div class="notes">
+          <div style="border-top:1px solid #ccc; margin-top:10px; padding-top:10px;">
+            <div style="font-size:11px;">Whether tax is payable under reverse charge - <strong>NO</strong></div>
+            <div style="margin-top:6px">CIN - TAN - PAN - AEMFS2408G &nbsp; HSN - 9966</div>
+          </div>
+
+          <div class="blue-band">
+            This invoice shall be deemed correct and payable unless Customer notifies SPICE EXPRESS in writing within seven (7) days from the date of invoice, stating the specific inaccuracy. Please contact on the below mentioned number/Email ID or reach out to our call centre @1860-123-4284 for any further assistance.
+          </div>
+
+          <div style="margin-top:8px; font-size:11px;">Note: a) If you have any clarification concerning this invoice, contact <span style="font-weight:700">julie.douglas@spiceexpress.co.in</span> - 9921065387<br/>
+          julie.douglas@spiceexpress.co.in - 9921065387</div>
+
+          <div style="margin-top:8px; font-size:11px;">b) If the total amount due is not paid on due date as mentioned above, interest charges shall be levied @2% p.m. or part thereof.</div>
+
+          <div style="margin-top:10px; font-weight:700">Mode of Payment:</div>
+          <div class="small">We accept payment through Account payee Cheque, Debit/Credit card, Net Banking, IMPS, UPI, RTGS, NEFT & BHIM Aadhar Pay.</div>
+          <div style="margin-top:6px">a) By RTGS/NEFT transfer to the Account No <strong>252511114444</strong>, IFSC Code: <strong>INDB000025</strong>, Bank Name - <strong>INDUSIND BANK</strong></div>
+          <div>b) By Account payee cheque / Demand draft favouring <strong>SPICE EXPRESS</strong>. Cash payments are not accepted.</div>
+
+          <div style="margin-top:8px; font-size:11px;">a) We have charged fuel surcharge as per our contract. For Current Price of DPH/ATF, please refer <a href="http://www.spiceexpress.co.in/fuel-dieselsurcharge">http://www.spiceexpress.co.in/fuel-dieselsurcharge</a>.</div>
+          <div style="margin-top:6px; font-size:11px;">b) Refer: ^ Extra Service Station * DD on delivery # Observation Note ++ Other Delivery Charges.</div>
+
+          <div style="margin-top:8px; font-size:11px;"><strong>Terms and Conditions :</strong>
+            <ol>
+              <li>Please do not accept hand written Invoice / Bill / Statements.</li>
+              <li>All disputes, differences and/or claims arising out of this invoice shall be subject to exclusive jurisdiction of Hyderabad / Secunderabad, TS India.</li>
+              <li>The terms and conditions of this invoice be read along with the terms referred in the contract and the dockets, being integral part of this invoice.</li>
+              <li>Any dishonour of cheque will be at your risk and cost.</li>
+              <li>Errors and omissions excepted.</li>
+            </ol>
+          </div>
+
+          <div style="margin-top:8px; font-weight:700">This is a computer generated invoice and needs no signature.</div>
+        </div>
+
+  <div class="footer-box">
+          <div style="font-weight:700">State Regd. Address - Block D, Plot No. D 464, Martin nagar, Mankapur, Nagpur 440002</div>
+          <div>Head Office - Block D, Plot No. D 464, Martin nagar, Mankapur, Nagpur 440002</div>
+          <div>Call Free No. 1860 - 123 - 4284 | www.spiceexpress.co.in</div>
+        </div>
+  <div class="page-footer">Page 1 of 2</div>
+      </div>
+    </div>
+  </body>
+</html>
+
