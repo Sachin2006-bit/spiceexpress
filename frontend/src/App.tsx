@@ -1,41 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Toaster } from './lib/toast'
-import { getUserFromStorage, isAuthed as libIsAuthed } from './lib/auth'
-import { motion as fmMotion } from 'framer-motion'
-import { BrowserRouter, Route, Routes, NavLink, Navigate } from 'react-router-dom'
+import { isAuthed as libIsAuthed } from './lib/auth'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './App.css'
-import Analytics from './pages/Analytics'
-import Customers from './pages/Customers'
-import CustomerList from './pages/CustomerList'
-import AddCustomer from './pages/AddCustomer'
-import Invoices from './pages/Invoices'
-import InvoiceDetailsPage from './pages/InvoiceDetailsPage'
-import Dashboard from './pages/Dashboard'
-import Login from './pages/Login'
-import LRsPage from './pages/LRsPage'
-import LRDetailsPage from './pages/LRDetailsPage'
-import Sidebar from './components/Sidebar'
-import Profile from './pages/Profile'
-import CreateLR from './pages/CreateLR'
-import MIS from './pages/MIS'
-import Tracking from './pages/Tracking'
-import LandingPage from './pages/LandingPage'
-import RateMapping from './pages/RateMapping'
-import { motion } from 'framer-motion'
-import gsap from 'gsap'
 import PageLayout from './PageLayout'
 
 // use centralized isAuthed helper from lib/auth
 const isAuthed = libIsAuthed;
-
-function PrivateRoute({ children, roles }: { children: React.ReactElement, roles?: string[] }) {
-  if (!isAuthed()) return <Navigate to="/login" replace />;
-  const user = getUserFromStorage();
-  if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
-}
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)

@@ -75,7 +75,7 @@ export default function InvoiceDetailsPage() {
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(invoice.lrList) && invoice.lrList.length > 0 ? invoice.lrList.map(lr => (
+              {Array.isArray(invoice.lrList) && invoice.lrList.length > 0 ? invoice.lrList.map((lr: any) => (
                 <tr key={lr._id} className="border-t">
                   <td className="px-3 py-2">{lr.lrNumber}</td>
                   <td className="px-3 py-2">{lr.bookingDate ? new Date(lr.bookingDate).toLocaleDateString() : '-'}</td>

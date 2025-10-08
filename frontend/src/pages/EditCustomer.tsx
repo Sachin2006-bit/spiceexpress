@@ -47,9 +47,7 @@ export default function EditCustomer() {
     if (id) fetchCustomer();
   }, [id]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
+  // handleChange function removed - not used in this component
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

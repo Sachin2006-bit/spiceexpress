@@ -57,12 +57,12 @@ export default function Tracking() {
       if (!found) throw new Error('No LR found with that number')
       setLr(found)
   // Map legacy status values to backend values if needed
-  let backendStatus = found.status;
+  let backendStatus: string = found.status;
   if (backendStatus === 'pending') backendStatus = 'Booked';
   if (backendStatus === 'in-transit') backendStatus = 'In Transit';
   if (backendStatus === 'delivered') backendStatus = 'Delivered';
   if (backendStatus === 'cancelled') backendStatus = 'Cancelled';
-  setStatus(backendStatus);
+  setStatus(backendStatus as LRStatus);
     } catch (err: any) {
       setError(err.message || 'Failed to track LR')
     } finally {

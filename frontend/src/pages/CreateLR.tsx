@@ -82,7 +82,7 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	const [expectedDelivery, setExpectedDelivery] = useState("");
 	const [shipmentValue, setShipmentValue] = useState("");
 	const [shipmentDescription, setShipmentDescription] = useState("");
-	const [attachment, setAttachment] = useState<File | null>(null);
+	// const [attachment, setAttachment] = useState<File | null>(null); // unused for now
 	const [numPackages, setNumPackages] = useState("1");
 	const [actualWeight, setActualWeight] = useState("");
 	const [chargedWeight, setChargedWeight] = useState("");
@@ -598,7 +598,7 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 						<input
 							type="file"
 							className="block border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-							onChange={e => setAttachment(e.target.files ? e.target.files[0] : null)}
+							onChange={() => {/* file attachment not implemented yet */}}
 						/>
 					</div>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

@@ -1,4 +1,8 @@
-const API_BASE_URL = 'http://localhost:5000/api'
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://spiceexpress-backend.onrender.com/api'
+  : 'http://localhost:5000/api';
+
+export { API_BASE_URL };
 
 
 function authHeaders(): HeadersInit {
@@ -61,7 +65,7 @@ export const customerApi = {
   create: (data: CreateCustomerData) => httpPost<Customer>('/customers', data),
   // getSummary: (id: string) => httpGet<any>(`/customers/${id}/summary`),
   getById: (id: string) => httpGet<Customer>(`/customers/${id}`),
-  update: (id: string, data: Customer) => fetch(`${API_BASE_URL}/customers/${id}`, {
+  update: (id: string, data: Partial<Customer>) => fetch(`${API_BASE_URL}/customers/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
@@ -133,6 +137,8 @@ export interface LR {
     ownerRisk?: number;
     gstCharge?: number;
     total?: number;
+    subTotal?: number;
+    grandTotal?: number;
   };
   amount?: number;
   [key: string]: any;
@@ -273,4 +279,15 @@ export interface CreateCustomerData {
   rate?: {
     [laneKey: string]: LaneRate;
   };
+}
+
+// Analytics comparison data types
+export interface ComparisonPeriod {
+  lrCount: number;
+  revenue: number;
+}
+
+export interface ComparisonData {
+  periodA: ComparisonPeriod | null;
+  periodB: ComparisonPeriod | null;
 }

@@ -20,10 +20,7 @@ async function downloadLR(id: string) {
 }
 import { useEffect, useState } from 'react'
 
-type LR = {
-  _id: string
-  lrNumber: string
-}
+// LR data is handled dynamically using any[] instead of typed interface
 
 export default function LRs() {
   const [lrs, setLrs] = useState<any[]>([])

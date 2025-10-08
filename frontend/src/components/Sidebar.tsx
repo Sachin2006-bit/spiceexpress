@@ -3,8 +3,6 @@ import { cn } from '../lib/utils'
 import { getUserFromStorage } from '../lib/auth'
 import { 
   User, 
-  CreditCard, 
-  Calculator, 
   MapPin, 
   FileText, 
   BarChart3, 

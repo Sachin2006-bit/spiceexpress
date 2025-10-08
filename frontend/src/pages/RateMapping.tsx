@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { customerApi } from '../lib/api';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -10,7 +10,7 @@ export default function RateMapping() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [newLane, setNewLane] = useState<{ from: string; to: string; ratePerKg: string }>({ from: '', to: '', ratePerKg: '' });
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false); // loading state not used but setLoading is called
   const [error, setError] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
 
