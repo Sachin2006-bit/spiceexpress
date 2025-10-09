@@ -5,9 +5,6 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './App.css'
 import PageLayout from './PageLayout'
 
-// use centralized isAuthed helper from lib/auth
-const isAuthed = libIsAuthed;
-
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sessionExpiredModal, setSessionExpiredModal] = useState<{ open: boolean; message?: string }>({ open: false });
@@ -15,6 +12,30 @@ function App() {
     // Persist dark mode preference in localStorage
     return localStorage.getItem('dark_mode') === 'true';
   });
+  
+  // Reactive authentication state
+  const [isAuthed, setIsAuthed] = useState(() => libIsAuthed());
+  
+  // Check auth state on mount and when localStorage changes
+  useEffect(() => {
+    const checkAuthState = () => {
+      setIsAuthed(libIsAuthed());
+    };
+    
+    // Check immediately
+    checkAuthState();
+    
+    // Listen for storage changes (login/logout in other tabs)
+    window.addEventListener('storage', checkAuthState);
+    
+    // Listen for custom auth events
+    window.addEventListener('authStateChanged', checkAuthState);
+    
+    return () => {
+      window.removeEventListener('storage', checkAuthState);
+      window.removeEventListener('authStateChanged', checkAuthState);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (darkMode) {
@@ -69,6 +90,10 @@ function App() {
       timer = setTimeout(() => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
+        
+        // Trigger auth state change event
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
+        
         window.location.href = '/login';
       }, 5000);
     };
@@ -88,7 +113,7 @@ function App() {
           path="*"
           element={
             <PageLayout
-              isAuthed={isAuthed()}
+              isAuthed={isAuthed}
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               sidebarOpen={sidebarOpen}

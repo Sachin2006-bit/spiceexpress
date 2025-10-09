@@ -89,6 +89,10 @@ export default function Sidebar() {
           onClick={() => {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user');
+            
+            // Trigger auth state change event
+            window.dispatchEvent(new CustomEvent('authStateChanged'));
+            
             window.location.href = '/login';
           }}
         >

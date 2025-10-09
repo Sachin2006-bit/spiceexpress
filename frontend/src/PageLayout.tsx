@@ -55,6 +55,10 @@ const PageLayout = ({ isAuthed, darkMode, setDarkMode, sidebarOpen, setSidebarOp
                 <button className="px-3 py-2 rounded bg-red-600 text-white" onClick={() => {
                   localStorage.removeItem('auth_token');
                   localStorage.removeItem('user');
+                  
+                  // Trigger auth state change event
+                  window.dispatchEvent(new CustomEvent('authStateChanged'));
+                  
                   window.location.href = '/login';
                 }}>Go to Login</button>
               </div>

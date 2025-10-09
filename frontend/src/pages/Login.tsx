@@ -53,6 +53,10 @@ export default function Login() {
         if (json.user) {
           localStorage.setItem('user', JSON.stringify(json.user));
         }
+        
+        // Trigger auth state change event
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
+        
         navigate('/dashboard', { replace: true })
       } else {
         console.log('📝 Attempting register to:', `${API_BASE_URL}/auth/register`);
