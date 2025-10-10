@@ -15,8 +15,6 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [name, setName] = useState('')
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,53 +31,36 @@ export default function Login() {
     }
     
     try {
-      if (mode === 'login') {
-        console.log('🔐 Attempting login to:', `${API_BASE_URL}/auth/login`);
-        const res = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-          mode: 'cors',
-          credentials: 'omit'
-        })
-        console.log('📊 Login response:', res.status, res.statusText);
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('❌ Login error response:', errorText);
-          throw new Error(`Login failed: ${res.status} ${res.statusText} - ${errorText}`);
-        }
-        const json = await res.json()
-        localStorage.setItem('auth_token', json.token)
-        if (json.user) {
-          localStorage.setItem('user', JSON.stringify(json.user));
-        }
-        
-        // Trigger auth state change event
-        window.dispatchEvent(new CustomEvent('authStateChanged'));
-        
-        navigate('/dashboard', { replace: true })
-      } else {
-        console.log('📝 Attempting register to:', `${API_BASE_URL}/auth/register`);
-        const res = await fetch(`${API_BASE_URL}/auth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password }),
-        })
-        console.log('📊 Register response:', res.status, res.statusText);
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('❌ Register error response:', errorText);
-          throw new Error(`Registration failed: ${res.status} ${res.statusText} - ${errorText}`);
-        }
-        setMode('login')
-        setError('Registration successful! Please sign in.')
+      console.log('🔐 Attempting login to:', `${API_BASE_URL}/auth/login`);
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        mode: 'cors',
+        credentials: 'omit'
+      })
+      console.log('📊 Login response:', res.status, res.statusText);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ Login error response:', errorText);
+        throw new Error(`Login failed: ${res.status} ${res.statusText} - ${errorText}`);
       }
+      const json = await res.json()
+      localStorage.setItem('auth_token', json.token)
+      if (json.user) {
+        localStorage.setItem('user', JSON.stringify(json.user));
+      }
+      
+      // Trigger auth state change event
+      window.dispatchEvent(new CustomEvent('authStateChanged'));
+      
+      navigate('/dashboard', { replace: true })
     } catch (err: any) {
       console.error('🚨 Auth error:', err);
       if (err.name === 'TypeError' && err.message.includes('fetch')) {
         setError('Connection failed - check if backend is running');
       } else {
-        setError(err.message ?? (mode === 'login' ? 'Login failed' : 'Registration failed'));
+        setError(err.message ?? 'Login failed');
       }
     } finally {
       setLoading(false)
@@ -100,22 +81,9 @@ export default function Login() {
             <span className="text-white text-2xl font-bold">S</span>
           </div>
           <h1 className="text-3xl font-extrabold text-gray-900 mb-1">Spice Express</h1>
-          <div className="text-gray-500 text-base font-medium mb-2">{mode === 'login' ? 'Sign in to your account' : 'Create your account'}</div>
+          <div className="text-gray-500 text-base font-medium mb-2">Sign in to your account</div>
         </div>
         <form onSubmit={onSubmit} className="w-full space-y-6">
-          {mode === 'register' && (
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="border rounded-lg px-4 py-3 w-full bg-gray-100 text-gray-900 focus:bg-white focus:outline-none"
-                placeholder="Your name"
-                required
-              />
-            </div>
-          )}
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700">Email</label>
             <input
@@ -144,34 +112,9 @@ export default function Login() {
             type="submit"
             disabled={loading}
           >
-            {loading ? (mode === 'login' ? 'Signing in…' : 'Registering…') : (mode === 'login' ? 'Sign in' : 'Register')}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <div className="mt-6 text-center w-full">
-          {mode === 'login' ? (
-            <>
-              <span className="text-gray-600">Don't have an account?</span>{' '}
-              <button
-                className="text-red-600 font-semibold hover:underline ml-1"
-                onClick={() => { setMode('register'); setError(null); }}
-                type="button"
-              >
-                Register
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="text-gray-600">Already have an account?</span>{' '}
-              <button
-                className="text-red-600 font-semibold hover:underline ml-1"
-                onClick={() => { setMode('login'); setError(null); }}
-                type="button"
-              >
-                Sign in
-              </button>
-            </>
-          )}
-        </div>
       </div>
     </motion.div>
   )

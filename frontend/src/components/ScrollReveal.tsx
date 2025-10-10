@@ -11,14 +11,24 @@ interface ScrollRevealProps {
 
 const ScrollReveal: React.FC<ScrollRevealProps> = ({ children, delay = 0, y = 40, scale = 0.98 }) => {
   const controls = useAnimation();
-  // Increase threshold for smoother trigger
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.7 });
+  // Use lower threshold for mobile devices to ensure content shows
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [ref, inView] = useInView({ 
+    triggerOnce: true, 
+    threshold: isMobile ? 0.1 : 0.3,
+    rootMargin: isMobile ? '-10px 0px' : '-50px 0px'
+  });
 
   React.useEffect(() => {
     if (inView) {
       controls.start('visible');
     }
-  }, [controls, inView]);
+    
+    // Mobile fallback: Show content immediately on mobile if no animation
+    if (isMobile && y === 0 && scale === 1) {
+      controls.start('visible');
+    }
+  }, [controls, inView, isMobile, y, scale]);
 
   return (
     <motion.div

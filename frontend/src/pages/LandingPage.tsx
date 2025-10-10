@@ -4,12 +4,33 @@ import ScrollReveal from '../components/ScrollReveal';
 import Modal from '../components/Modal';
 import Tracking from './Tracking';
 import { Train, Truck, Shield, Settings, Users, Check } from 'lucide-react';
+import { isAuthed } from '../lib/auth';
 
 const LandingPage = () => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [scrolled, setScrolled] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = () => {
+      setIsLoggedIn(isAuthed());
+    };
+    
+    // Check on mount
+    checkAuth();
+    
+    // Listen for auth state changes
+    window.addEventListener('authStateChanged', checkAuth);
+    window.addEventListener('storage', checkAuth);
+    
+    return () => {
+      window.removeEventListener('authStateChanged', checkAuth);
+      window.removeEventListener('storage', checkAuth);
+    };
+  }, []);
   // Zones and rate matrix (kept in-memory as requested)
   const ZONES = [
     { id: 'north1', label: 'North 1 — National Capital Region (Delhi)' },
@@ -130,9 +151,13 @@ const LandingPage = () => {
               <a href="#services" className="hover:text-red-600 text-gray-800">Services</a>
               <a href="#contact" className="hover:text-red-600 text-gray-800">Contact</a>
             </div>
-            <div className="flex gap-2">
-              <a href="/login" className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700">Login</a>
-              <a href="/signup" className="px-4 py-2 rounded border border-red-600 text-red-600 font-semibold hover:bg-red-50">Sign Up</a>
+            <div className="flex">
+              <a 
+                href={isLoggedIn ? "/dashboard" : "/login"} 
+                className="px-8 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700"
+              >
+                {isLoggedIn ? "Go to Dashboard" : "Login"}
+              </a>
             </div>
           </div>
         </nav>
@@ -149,9 +174,13 @@ const LandingPage = () => {
               <a href="#services" className="hover:text-red-600">Services</a>
               <a href="#contact" className="hover:text-red-600">Contact</a>
             </div>
-            <div className="hidden md:flex items-center gap-2 flex-none">
-              <a href="/login" className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700">Login</a>
-              <a href="/signup" className="px-4 py-2 rounded border border-red-600 text-red-600 font-semibold hover:bg-red-50">Sign Up</a>
+            <div className="hidden md:flex items-center flex-none">
+              <a 
+                href={isLoggedIn ? "/dashboard" : "/login"} 
+                className="px-8 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700"
+              >
+                {isLoggedIn ? "Go to Dashboard" : "Login"}
+              </a>
             </div>
             <div className="md:hidden flex items-center">
               <button aria-label="Toggle menu" onClick={() => setMobileMenuOpen(v => !v)} className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-red-600">
@@ -166,7 +195,7 @@ const LandingPage = () => {
   <div className="h-20 md:h-20" />
 
   {/* Hero Section - Mimics reference image exactly */}
-      <ScrollReveal y={60} scale={0.96}>
+      <ScrollReveal y={isMobile ? 0 : 60} scale={isMobile ? 1 : 0.96}>
         <section className="w-full min-h-[70vh] flex flex-col items-center px-4 md:px-12 py-10 md:py-20 bg-white">
           <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center md:items-center gap-10 md:gap-24">
           {/* Left Panel: Headline + Image */}
@@ -256,9 +285,13 @@ const LandingPage = () => {
               <a href="#about" className="text-gray-800 font-medium">About</a>
               <a href="#services" className="text-gray-800 font-medium">Services</a>
               <a href="#contact" className="text-gray-800 font-medium">Contact</a>
-              <div className="flex gap-2 pt-2">
-                <a href="/login" className="flex-1 text-center px-3 py-2 rounded bg-red-600 text-white font-semibold">Login</a>
-                <a href="/signup" className="flex-1 text-center px-3 py-2 rounded border border-red-600 text-red-600 font-semibold">Sign Up</a>
+              <div className="pt-2">
+                <a 
+                  href={isLoggedIn ? "/dashboard" : "/login"} 
+                  className="w-full text-center px-3 py-2 rounded bg-red-600 text-white font-semibold block"
+                >
+                  {isLoggedIn ? "Go to Dashboard" : "Login"}
+                </a>
               </div>
             </div>
           </div>
