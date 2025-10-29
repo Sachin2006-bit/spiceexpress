@@ -74,7 +74,7 @@ export default function CustomerList() {
     if (!window.confirm('Delete this customer?')) return;
     setDeleteLoadingId(id);
     try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      await customerApi.delete(id);
       setCustomers(cs => cs.filter(c => c._id !== id));
       setFiltered(fs => fs.filter(c => c._id !== id));
     } catch (err) {
@@ -89,9 +89,7 @@ export default function CustomerList() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/customers');
-        if (!res.ok) throw new Error('Failed to fetch customers');
-        const data = await res.json();
+        const data = await customerApi.getAll();
         setCustomers(data);
         setFiltered(data);
       } catch (err: any) {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../lib/api';
 
 const initialForm = {
   code: '',
@@ -38,7 +39,7 @@ export default function AddCustomer() {
     setLoading(true);
     setError(null);
     try {
-  const res = await fetch('/api/customers', {
+  const res = await fetch(`${API_BASE_URL}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

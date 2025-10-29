@@ -149,6 +149,13 @@ export const customerApi = {
   }).then(res => {
     if (!res.ok) throw new Error(`PUT /customers/${id} failed: ${res.status}`)
     return res.json();
+  }),
+  delete: (id: string) => fetch(`${API_BASE_URL}/customers/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  }).then(res => {
+    if (!res.ok) throw new Error(`DELETE /customers/${id} failed: ${res.status}`)
+    return res.json();
   })
 }
 

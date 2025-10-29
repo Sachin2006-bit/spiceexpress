@@ -95,3 +95,14 @@ export const getCustomerSummary = async (req, res) => {
     return res.status(500).json({ error: 'Failed to get customer summary', details: error.message });
   }
 };
+
+export const deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customer = await Customer.findByIdAndDelete(id);
+    if (!customer) return res.status(404).json({ error: 'Customer not found' });
+    res.json({ message: 'Customer deleted successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to delete customer' });
+  }
+};
