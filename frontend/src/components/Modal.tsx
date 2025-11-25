@@ -5,6 +5,7 @@ interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  lightMode?: boolean;
 }
 
 const backdropVariants = {
@@ -17,7 +18,7 @@ const modalVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-export default function Modal({ open, onClose, children }: ModalProps) {
+export default function Modal({ open, onClose, children, lightMode = false }: ModalProps) {
   return (
     <AnimatePresence>
       {open && (
@@ -30,7 +31,7 @@ export default function Modal({ open, onClose, children }: ModalProps) {
           onClick={onClose}
         >
           <motion.div
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 max-w-lg w-full relative"
+            className={`${lightMode ? 'bg-white' : 'bg-white dark:bg-gray-900'} rounded-xl shadow-xl mx-4 relative`}
             initial="hidden"
             animate="visible"
             exit="hidden"
@@ -38,7 +39,7 @@ export default function Modal({ open, onClose, children }: ModalProps) {
             onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) => e.stopPropagation()}
           >
             <button
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl font-bold"
+              className={`absolute top-3 right-3 ${lightMode ? 'text-gray-400 hover:text-gray-700' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'} text-xl font-bold`}
               onClick={onClose}
               aria-label="Close"
             >

@@ -54,8 +54,13 @@ export default function LRs() {
     <div>
       <h2>LRs</h2>
       <form onSubmit={createLR} style={{ display: 'flex', gap: 8 }}>
-        <input placeholder="LR Number" value={lrNumber} onChange={(e) => setLrNumber(e.target.value)} />
-        <button type="submit" disabled={!lrNumber || loading}>Create</button>
+        <input
+          placeholder="LR Number"
+          value={lrNumber}
+          onChange={(e) => setLrNumber(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-red-600 w-full"
+        />
+        <button type="submit" disabled={!lrNumber || loading} className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-60">Create</button>
       </form>
       {loading ? (
         <p>Loading…</p>

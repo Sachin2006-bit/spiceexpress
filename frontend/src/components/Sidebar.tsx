@@ -9,13 +9,11 @@ import {
   Truck, 
   FileSpreadsheet, 
   Map, 
-  Tag,
   Home
 } from 'lucide-react'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Home, roles: ['admin', 'user'] },
-  { label: 'Profile', to: '/profile', icon: User, roles: ['admin', 'user'] },
   { label: 'Tracking', to: '/tracking', icon: MapPin, roles: ['admin', 'user'] },
   { label: 'LRs', to: '/lrs', icon: Truck, roles: ['admin', 'user'] },
   { label: 'Invoices', to: '/invoices', icon: FileText, roles: ['admin', 'user'] },
@@ -24,7 +22,6 @@ const navItems = [
   { label: 'MIS', to: '/mis', icon: BarChart3, roles: ['admin'] },
   { label: 'Create LR', to: '/create-lr', icon: FileSpreadsheet, roles: ['admin'] },
   { label: 'Rates Mapping', to: '/rates', icon: Map, roles: ['admin'] },
-  { label: 'Vendor Code', to: '/vendors', icon: Tag, roles: ['admin'] },
 ]
 
 export default function Sidebar() {
