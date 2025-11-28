@@ -728,12 +728,48 @@ const LandingPage = () => {
               className="flex items-center gap-10 animate-marquee whitespace-nowrap"
               style={{ animation: 'marquee 20s linear infinite' }}
             >
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="w-40 h-24 bg-gray-200 rounded flex items-center justify-center">Logo {i + 1}</div>
+              {[
+                "IMG_3966.PNG",
+                "IMG_3968.PNG",
+                "IMG_3969.PNG",
+                "IMG_3970.PNG",
+                "IMG_3971.PNG",
+                "IMG_3972.PNG",
+                "IMG_3973.PNG",
+                "IMG_3974.PNG",
+                "IMG_3975.PNG",
+                "IMG_3976.PNG"
+              ].map((logo, i) => (
+                <div key={logo + i} className="w-40 h-24 flex items-center justify-center">
+                  <img
+                    src={`/logos spiceexpress/${logo}`}
+                    alt={`Partner Logo ${i + 1}`}
+                    className="h-20 object-contain max-w-[9rem] mx-auto"
+                    draggable={false}
+                  />
+                </div>
               ))}
               {/* Duplicate for seamless loop */}
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={`dup-${i}`} className="w-40 h-24 bg-gray-200 rounded flex items-center justify-center">Logo {i + 1}</div>
+              {[
+                "IMG_3966.PNG",
+                "IMG_3968.PNG",
+                "IMG_3969.PNG",
+                "IMG_3970.PNG",
+                "IMG_3971.PNG",
+                "IMG_3972.PNG",
+                "IMG_3973.PNG",
+                "IMG_3974.PNG",
+                "IMG_3975.PNG",
+                "IMG_3976.PNG"
+              ].map((logo, i) => (
+                <div key={`dup-${logo}-${i}`} className="w-40 h-24 flex items-center justify-center">
+                  <img
+                    src={`/logos spiceexpress/${logo}`}
+                    alt={`Partner Logo ${i + 1}`}
+                    className="h-20 object-contain max-w-[9rem] mx-auto"
+                    draggable={false}
+                  />
+                </div>
               ))}
             </div>
           </div>
