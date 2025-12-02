@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import ScrollReveal from '../components/ScrollReveal';
 import Modal from '../components/Modal';
 import TrackingLight from '../components/TrackingLight';
-import TrustBadges from '../components/TrustBadges';
 import AboutStats from '../components/AboutStats';
 import Carousel from '../components/Carousel';
 import { Train, Truck, Shield, Settings, Users, Check } from 'lucide-react';
@@ -424,13 +423,14 @@ const LandingPage = () => {
             aspectRatio="h-64"
           />
         </div>
-        <p className="mb-10 text-lg text-gray-800">Spice Express is India's premier rail-logistics solution. Since 2019, we've revolutionized cargo movement by harnessing the speed and reliability of India's rail network. With 250+ dedicated professionals, a nationwide footprint, and 24/7 operations, we deliver best-in-class logistics that keep businesses moving forward.</p>
+        <p className="mb-6 text-lg text-gray-800">Spice Express is India's premier rail-logistics solution. Since 2019, we've revolutionized cargo movement by harnessing the speed and reliability of India's rail network. With 250+ dedicated professionals, a nationwide footprint, and 24/7 operations, we deliver best-in-class logistics that keep businesses moving forward.</p>
+        <div className="mb-10 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+          <p className="text-2xl font-extrabold text-blue-900 leading-relaxed">
+            Assured next-day delivery to all key cities & major urban hubs across India
+          </p>
+        </div>
         <AboutStats />
       </section>
-    </ScrollReveal>
-    {/* Trust Badges Section */ }
-    <ScrollReveal y={40} scale={0.98}>
-      <TrustBadges />
     </ScrollReveal>
     {/* Our Services Section - Redesigned to match reference image with Lucide icons */ }
     <ScrollReveal y={50} scale={0.97}>
@@ -498,7 +498,7 @@ const LandingPage = () => {
     <ScrollReveal y={40} scale={0.98}>
       <section className="py-20 px-6 max-w-7xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900 text-center">Our <span style={{ color: 'var(--brand-red)' }}>Capabilities</span></h2>
-        <p className="mb-12 text-lg text-gray-700 text-center max-w-3xl mx-auto">From door-to-door delivery to real-time tracking, we provide comprehensive logistics solutions tailored to your business needs.</p>
+        <p className="mb-8 text-lg text-gray-700 text-center max-w-3xl mx-auto">From door-to-door delivery to real-time tracking, we provide comprehensive logistics solutions tailored to your business needs.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Rail Transport Excellence */}
@@ -683,9 +683,8 @@ const LandingPage = () => {
         {/* Right: Dashboard image */}
         <div className="flex items-center justify-center relative">
           <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-gray-100 p-6 flex flex-col items-center justify-center animate-float">
-            <div className="absolute top-6 right-6 bg-white rounded-full px-4 py-2 shadow text-green-600 font-semibold text-sm flex items-center gap-2">● Live Tracking</div>
+            <div className="absolute top-6 right-6 bg-white rounded-full px-4 py-2 shadow text-green-600 font-semibold text-sm flex items-center gap-2">● Online Tracking</div>
             <img src="/dashboard.png" alt="Spice Express Dashboard" className="w-full h-80 object-cover rounded-2xl mb-2" />
-            <div className="absolute bottom-6 left-6 bg-white rounded-full px-4 py-2 shadow text-gray-700 font-semibold text-sm flex items-center gap-2">🚚 2,847 Active</div>
           </div>
         </div>
       </section>
@@ -694,26 +693,26 @@ const LandingPage = () => {
     <ScrollReveal y={30} scale={0.99}>
       <section className="py-16 px-6 max-w-5xl mx-auto text-center">
         <h3 className="text-2xl font-bold mb-8 text-gray-900">What Our Clients Say</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="text-yellow-400 text-2xl mb-2">★★★★★</div>
-            <div className="text-gray-900 font-semibold mb-2">"Next-day delivery is always reliable!"</div>
-            <div className="text-gray-700 text-sm">— Global Auto</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-start">
+            <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
+            <div className="text-gray-900 font-normal mb-4 text-left">"Their rail movement network is a game changer. Even during peak seasons, they maintained next-day delivery for us. Our inventory planning became more efficient because we finally had a partner we could depend on."</div>
+            <div className="text-gray-700 text-sm font-semibold">— Schneider Electric, SCM Head</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="text-yellow-400 text-2xl mb-2">★★★★★</div>
-            <div className="text-gray-900 font-semibold mb-2">"Spice Express provides tracking visibility for every shipment."</div>
-            <div className="text-gray-700 text-sm">— Tata Hitachi</div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-start">
+            <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
+            <div className="text-gray-900 font-normal mb-4 text-left">"Earlier we struggled with unpredictable delivery timelines. After switching to their next-day rail cargo model, our dispatches became smoother and customer complaints dropped drastically. The tracking, communication, and professionalism are top-notch."</div>
+            <div className="text-gray-700 text-sm font-semibold">— Tata Hitachi, SCM Manager</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="text-yellow-400 text-2xl mb-2">★★★★★</div>
-            <div className="text-gray-900 font-semibold mb-2">"24/7 support and proactive updates are so convenient!"</div>
-            <div className="text-gray-700 text-sm">— Mindray</div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-start">
+            <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
+            <div className="text-gray-900 font-normal mb-4 text-left">"For pharma, timing is everything. Their next-day delivery has consistently kept our time-critical shipments on track. Reliable, fast, and absolutely dependable. Zero delays in 8 months."</div>
+            <div className="text-gray-700 text-sm font-semibold">— Zim Laboratories, Operations Head</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="text-yellow-400 text-2xl mb-2">★★★★★</div>
-            <div className="text-gray-900 font-semibold mb-2">"I can track each shipment across India with real results."</div>
-            <div className="text-gray-700 text-sm">— ZIM Logistics</div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-start">
+            <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
+            <div className="text-gray-900 font-normal mb-4 text-left">"We work with multiple logistics companies, but none match their commitment to timelines. Their next-day cargo delivery has helped us reduce storage costs and improve turnaround time. Highly recommended."</div>
+            <div className="text-gray-700 text-sm font-semibold">— Koye Pharmaceuticals, CEO</div>
           </div>
         </div>
       </section>
@@ -993,7 +992,7 @@ const LandingPage = () => {
             <div className="flex flex-col gap-1 text-sm text-neutral-300">
               <div className="flex items-start gap-2"><svg className="w-4 h-4 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 016 6c0 4.418-6 10-6 10S4 12.418 4 8a6 6 0 016-6zm0 8a2 2 0 100-4 2 2 0 000 4z" /></svg> D-42, Martin Nagar, Nara Road<br />Jaripatka, Nagpur-440014</div>
               <div className="flex items-center gap-2"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3.5A1.5 1.5 0 013.5 2h13A1.5 1.5 0 0118 3.5v13A1.5 1.5 0 0116.5 18h-13A1.5 1.5 0 012 16.5v-13zM4 4v12h12V4H4zm2 2h8v8H6V6z" /></svg> 7773952909<br />9921065387</div>
-              <div className="flex items-center gap-2"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2.94 6.94a1.5 1.5 0 012.12 0l7.07 7.07a1.5 1.5 0 01-2.12 2.12l-7.07-7.07a1.5 1.5 0 010-2.12z" /></svg> julie.douglas@spiceexpress.co.in</div>
+              <div className="flex items-center gap-2"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2.94 6.94a1.5 1.5 0 012.12 0l7.07 7.07a1.5 1.5 0 01-2.12 2.12l-7.07-7.07a1.5 1.5 0 010-2.12z" /></svg> info@spiceexpress.co.in</div>
               <div className="flex items-center gap-2"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12z" /></svg> www.spiceexpress.in</div>
             </div>
           </div>
