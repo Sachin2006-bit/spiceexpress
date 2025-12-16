@@ -1,5 +1,5 @@
-// API URL - Always use Vercel backend (override with VITE_API_URL env var if needed)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://spiceexpress-backend.vercel.app/api';
+// API URL - Use Railway backend (override with VITE_API_URL env var if needed)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://spiceexpress-production.up.railway.app/api';
 
 // Debug logging (temporary)
 console.log('🚀 API Configuration:');
