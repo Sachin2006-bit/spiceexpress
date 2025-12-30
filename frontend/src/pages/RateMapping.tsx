@@ -9,7 +9,7 @@ import type { Customer } from '../lib/api';
 export default function RateMapping() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [newLane, setNewLane] = useState<{ from: string; to: string; ratePerKg: string }>({ from: '', to: '', ratePerKg: '' });
+  const [newLane, setNewLane] = useState<{ from: string; to: string; rate: string; rateType: 'perKg' | 'perPackage' }>({ from: '', to: '', rate: '', rateType: 'perKg' });
   const [, setLoading] = useState(false); // loading state not used but setLoading is called
   const [error, setError] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -34,14 +34,15 @@ export default function RateMapping() {
   };
 
   const addLaneRate = async () => {
-    if (!selectedCustomer || !newLane.from.trim() || !newLane.to.trim() || !newLane.ratePerKg.trim()) return;
+    if (!selectedCustomer || !newLane.from.trim() || !newLane.to.trim() || !newLane.rate.trim()) return;
     const laneKey = `${newLane.from.trim().toLowerCase()}-${newLane.to.trim().toLowerCase()}`;
     const updatedRate = {
       ...(selectedCustomer.rate || {}),
       [laneKey]: {
         from: newLane.from.trim(),
         to: newLane.to.trim(),
-        ratePerKg: parseFloat(newLane.ratePerKg)
+        rateType: newLane.rateType,
+        rate: parseFloat(newLane.rate)
       }
     };
     // Always send all required fields for Customer
@@ -75,7 +76,7 @@ export default function RateMapping() {
     try {
       await customerApi.update(selectedCustomer._id, updatedCustomer);
       setSelectedCustomer(updatedCustomer);
-      setNewLane({ from: '', to: '', ratePerKg: '' });
+      setNewLane({ from: '', to: '', rate: '', rateType: 'perKg' });
       setError(null);
     } catch (err: any) {
       setError('Failed to add lane rate');
@@ -162,8 +163,8 @@ export default function RateMapping() {
                   c.code.toLowerCase().includes(customerSearch.toLowerCase()) ||
                   c.company.toLowerCase().includes(customerSearch.toLowerCase())
                 ).length === 0 && (
-                  <div className="px-4 py-2 text-gray-500">No matches found</div>
-                )}
+                    <div className="px-4 py-2 text-gray-500">No matches found</div>
+                  )}
               </div>
             )}
           </div>
@@ -197,14 +198,23 @@ export default function RateMapping() {
                 />
                 <Input
                   type="number"
-                  name="ratePerKg"
-                  placeholder="Rate per kg"
-                  value={newLane.ratePerKg}
+                  name="rate"
+                  placeholder="Rate"
+                  value={newLane.rate}
                   onChange={handleLaneChange}
-                  className="w-40"
+                  className="w-32"
                   min="0"
                   step="0.01"
                 />
+                <select
+                  name="rateType"
+                  value={newLane.rateType}
+                  onChange={(e) => setNewLane(l => ({ ...l, rateType: e.target.value as 'perKg' | 'perPackage' }))}
+                  className="border rounded px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+                >
+                  <option value="perKg">per Kg</option>
+                  <option value="perPackage">per Pkg</option>
+                </select>
                 <Button type="button" variant="default" onClick={addLaneRate} className="h-10 px-6">
                   Add Lane
                 </Button>
@@ -216,7 +226,7 @@ export default function RateMapping() {
                 {Object.entries(selectedCustomer.rate).map(([laneKey, lane]) => (
                   <div key={laneKey} className="flex items-center gap-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-900">
                     <span className="text-gray-900 dark:text-gray-100 font-medium w-40">{lane.from} - {lane.to}</span>
-                    <span className="text-gray-700 dark:text-gray-200 w-40">@ ₹{lane.ratePerKg} / kg</span>
+                    <span className="text-gray-700 dark:text-gray-200 w-40">@ ₹{lane.rate} / {lane.rateType === 'perKg' ? 'kg' : 'pkg'}</span>
                     <Button
                       type="button"
                       variant="destructive"

@@ -1,5 +1,15 @@
-// API URL - Use Railway backend (override with VITE_API_URL env var if needed)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://spiceexpress-production.up.railway.app/api';
+// API URL Configuration
+// Development: http://localhost:5000/api
+// Production: https://spiceexpress-production.up.railway.app/api
+// Override with VITE_API_URL env var if needed
+
+const LOCALHOST_URL = 'http://localhost:5000/api';
+const PRODUCTION_URL = 'https://spiceexpress-production.up.railway.app/api';
+
+// Set USE_LOCALHOST to true for local development, false for production
+const USE_LOCALHOST = true;
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || (USE_LOCALHOST ? LOCALHOST_URL : PRODUCTION_URL);
 
 // Debug logging (temporary)
 console.log('🚀 API Configuration:');
@@ -364,7 +374,23 @@ export interface CreateInvoiceData {
 export interface LaneRate {
   from: string;
   to: string;
-  ratePerKg: number;
+  rateType: 'perKg' | 'perPackage';
+  rate: number;
+}
+
+export interface DefaultCharges {
+  docketCharge: number;
+  doorDeliveryCharge: number;
+  handlingCharge: number;
+  pickupCharge: number;
+  transhipmentCharge: number;
+  insurance: number;
+  fuelSurcharge: number;
+  commission: number;
+  other: number;
+  carrierRisk: number;
+  ownerRisk: number;
+  gstPercent: number;
 }
 
 export interface Customer {
@@ -394,6 +420,7 @@ export interface Customer {
   rate?: {
     [laneKey: string]: LaneRate;
   };
+  defaultCharges?: DefaultCharges;
 }
 
 export interface CreateCustomerData {

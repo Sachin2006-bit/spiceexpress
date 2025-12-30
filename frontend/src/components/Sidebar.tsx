@@ -1,14 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import { cn } from '../lib/utils'
 import { getUserFromStorage } from '../lib/auth'
-import { 
-  User, 
-  MapPin, 
-  FileText, 
-  BarChart3, 
-  Truck, 
-  FileSpreadsheet, 
-  Map, 
+import {
+  User,
+  MapPin,
+  FileText,
+  BarChart3,
+  Truck,
+  FileSpreadsheet,
   Home
 } from 'lucide-react'
 
@@ -21,7 +20,6 @@ const navItems = [
   { label: 'Add Customer', to: '/admin/add-customer', icon: User, roles: ['admin'] },
   { label: 'MIS', to: '/mis', icon: BarChart3, roles: ['admin'] },
   { label: 'Create LR', to: '/create-lr', icon: FileSpreadsheet, roles: ['admin'] },
-  { label: 'Rates Mapping', to: '/rates', icon: Map, roles: ['admin'] },
 ]
 
 export default function Sidebar() {
@@ -60,8 +58,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100",
-                  isActive 
-                    ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100" 
+                  isActive
+                    ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                     : "text-gray-600 dark:text-gray-400"
                 )
               }
@@ -74,22 +72,22 @@ export default function Sidebar() {
       </nav>
       {/* Sidebar Footer (Logout + User details) */}
       <div className="border-t p-4 dark:border-gray-800 shrink-0 flex flex-col gap-3">
-    <NavLink
-      to="/"
-      className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition"
-    >
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-      Back to Landing Page
-    </NavLink>
+        <NavLink
+          to="/"
+          className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition"
+        >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          Back to Landing Page
+        </NavLink>
         <button
           className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800 transition"
           onClick={() => {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user');
-            
+
             // Trigger auth state change event
             window.dispatchEvent(new CustomEvent('authStateChanged'));
-            
+
             window.location.href = '/login';
           }}
         >

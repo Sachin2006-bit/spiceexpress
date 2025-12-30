@@ -13,7 +13,7 @@ const lrSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
   dispatchBranch: { type: String },
   company: { type: String, required: false }, // Company for access control
-    
+
   // Section 2: Vehicle & Driver Information
   vehicleNumber: { type: String },
   driverName: { type: String },
@@ -48,10 +48,10 @@ const lrSchema = new mongoose.Schema({
     chargedWeight: { type: Number },
     descriptionOfGoods: { type: String }
   },
-    
+
   // Section 6: Financials and Charges
   charges: {
-    paymentType: { type: String, enum: ['To Pay', 'Paid', 'Billed'], default: 'Billed' },
+    paymentType: { type: String, enum: ['TBB', 'PAID', 'TOPAY', 'FOC'], default: 'TBB' },
     freight: { type: Number, default: 0 },
     docketCharge: { type: Number, default: 0 },
     doorDeliveryCharge: { type: Number, default: 0 },
@@ -67,7 +67,7 @@ const lrSchema = new mongoose.Schema({
     gstCharge: { type: Number, default: 0 },
     total: { type: Number, default: 0 }
   },
-    
+
   // Section 7: Associated Documents
   ewayBillNumber: { type: String },
   customerInvoice: {

@@ -68,15 +68,20 @@ export const createLR = async (req, res) => {
     if (!lrNumber) {
       const date = new Date();
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+
+      // Determine prefix based on company code (11=SE, 12=ATL)
+      const companyCode = body.companyCode || '11';
+      const prefix = companyCode === '12' ? 'ATL' : 'SE';
+
+      // Count LRs for this company in the current year
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year + 1, 0, 1);
       const count = await LR.countDocuments({
-        bookingDate: {
-          $gte: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
-          $lt: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
-        }
+        lrNumber: { $regex: `^${prefix}${year}` }
       });
-      lrNumber = `${year}${month}${day}${String(count + 1).padStart(2, '0')}`;
+
+      // Format: PREFIX + YEAR + 3-digit sequence (e.g., SE2025001, ATL2025002)
+      lrNumber = `${prefix}${year}${String(count + 1).padStart(3, '0')}`;
     }
 
     // Compose LR object

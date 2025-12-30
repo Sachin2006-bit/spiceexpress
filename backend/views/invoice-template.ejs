@@ -143,19 +143,19 @@
 
     .summary-table th,
     .summary-table td {
-      border: 1px solid #c41e3a;
+      border: 1px solid #222;
       padding: 5px 8px;
       text-align: left;
     }
 
     .summary-table th {
       background: #fff;
-      color: #c41e3a;
+      color: #222;
       font-weight: 700;
     }
 
     .summary-header {
-      background: #c41e3a !important;
+      background: #222 !important;
       color: #fff !important;
       text-align: center;
     }
@@ -168,7 +168,7 @@
     }
 
     .invoice-details td {
-      border: 1px solid #c41e3a;
+      border: 1px solid #222;
       padding: 5px 8px;
     }
 
@@ -191,12 +191,12 @@
 
     .lines-table th,
     .lines-table td {
-      border: 1px solid #c41e3a;
+      border: 1px solid #222;
       padding: 6px 8px;
     }
 
     .lines-table th {
-      background: #c41e3a;
+      background: #222;
       color: #fff;
       font-weight: 600;
     }
@@ -218,7 +218,7 @@
     }
 
     .charges-table td {
-      border: 1px solid #c41e3a;
+      border: 1px solid #222;
       padding: 5px 8px;
     }
 
@@ -232,7 +232,7 @@
     }
 
     .charges-table .total {
-      background: #c41e3a;
+      background: #222;
       color: #fff;
       font-weight: 700;
     }
@@ -252,7 +252,7 @@
       font-size: 10px;
       margin-bottom: 10px;
       padding: 6px 8px;
-      border: 1px solid #c41e3a;
+      border: 1px solid #222;
       background: #fff;
     }
 
@@ -306,7 +306,7 @@
     /* Bank details */
     .bank-details {
       display: flex;
-      border: 1px solid #c41e3a;
+      border: 1px solid #222;
       font-size: 10px;
       margin-bottom: 8px;
     }
@@ -314,7 +314,7 @@
     .bank-details .cell {
       flex: 1;
       padding: 6px 8px;
-      border-right: 1px solid #c41e3a;
+      border-right: 1px solid #222;
     }
 
     .bank-details .cell:last-child {
@@ -338,33 +338,49 @@
       font-weight: 700;
     }
 
-    /* Footer company info */
+    /* Footer section - using table layout for PDF compatibility */
+    .footer-section {
+      width: 100%;
+      margin-top: 15px;
+      padding-top: 10px;
+    }
+
+    .footer-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .footer-table td {
+      vertical-align: bottom;
+      padding: 0;
+    }
+
     .footer-info {
       font-size: 10px;
-      margin-bottom: 10px;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+
+    .footer-info .company-name {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 4px;
     }
 
     .footer-info strong {
       font-weight: 700;
     }
 
-    /* Colored footer bar */
-    .footer-bar {
-      background: linear-gradient(90deg, #c41e3a 0%, #e85d04 100%);
+    /* Speed You Trust badge */
+    .footer-badge {
+      background-color: #c41e3a;
       color: #fff;
-      padding: 12px 20px;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      margin-top: 10px;
-    }
-
-    .footer-bar .tagline {
-      font-size: 14px;
+      padding: 10px 20px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
+      display: inline-block;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -377,9 +393,10 @@
         <div class="logo-row">
           <div class="logo">
             <% if (logoBase64) { %>
-              <img src="<%= logoBase64 %>" alt="<%= company && company.name ? company.name : 'Company Logo' %>"
-                style="height: 80px; width: auto;" />
-              <% } %>
+              <% const isSE=company && company.code==='11' ; %>
+                <img src="<%= logoBase64 %>" alt="<%= company && company.name ? company.name : 'Company Logo' %>"
+                  style="height: <%= isSE ? '120px' : '100px' %>; width: auto;" />
+                <% } %>
           </div>
         </div>
         <div class="original-label">Original For Recipient</div>
@@ -560,16 +577,19 @@
         <div class="terms-block">
           <h4>Terms and Conditions</h4>
           <ol>
-            <li>All payments to be made only through Account Payee Cheque /DD/RTGS in favor of Spice Express.</li>
+            <li>All payments to be made only through Account Payee Cheque /DD/RTGS in favor of <%= company &&
+                company.name ? company.name : 'Spice Express' %>.</li>
             <li>Interest @ 2.00% per month or part thereof will be charged if the bill is not paid on due date.</li>
             <li>All disputes and differences arising out of this will be subject to jurisdiction of Nagpur courts only.
             </li>
-            <li>Mail your payment advice to info@spiceexpress.co.in. You can also write to info@spiceexpress.co.in for
-              any billing related issues.</li>
+            <li>Mail your payment advice to <%= company && company.email ? company.email : 'info@spiceexpress.co.in' %>.
+                You can also write to <%= company && company.email ? company.email : 'info@spiceexpress.co.in' %> for
+                  any billing related issues.</li>
           </ol>
         </div>
         <div class="signature-block">
-          <div class="company">For Spice Express</div>
+          <div class="company">For <%= company && company.name ? company.name : 'Spice Express' %>
+          </div>
           <div class="auth">Authorized Signatory</div>
         </div>
       </div>
@@ -577,7 +597,7 @@
       <!-- Bank Details -->
       <div class="bank-details">
         <div class="cell"><span class="label">Bank Name:</span>
-          <%= company && company.bankName ? company.bankName : 'ICICI Bank Ltd.' %>
+          <%= company && company.bankName ? company.bankName : 'ICICI Bank Ltd' %>
         </div>
         <div class="cell"><span class="label">IFSC:</span>
           <%= company && company.ifsc ? company.ifsc : 'ICIC0002027' %>
@@ -607,26 +627,31 @@
           physical signed document. <strong>This is a computer generated invoice and needs no signature.</strong>
       </div>
 
-      <!-- Footer Info -->
-      <div class="footer-info">
-        <strong>
-          <%= company && company.name ? company.name : 'SPICE EXPRESS' %>
-        </strong><br />
-        <strong>Registered Office:</strong>
-        <%= company && company.address ? company.address
-          : 'Block D, Plot No. D 464, Martin nagar, Mankapur, Nagpur - 440002' %>,
-          <%= company && company.state ? company.state : 'Maharashtra' %>.<br />
-            <strong>Email:</strong>
-            <%= company && company.email ? company.email : 'info@spiceexpress.co.in' %><br />
-              <% if (company && company.website) { %><strong>Web:</strong>
-                <%= company.website %><br />
-                  <% } %>
-                    <strong>CIN:</strong>
-      </div>
-
-      <!-- Colored Footer Bar -->
-      <div class="footer-bar">
-        <div class="tagline">SPEED YOU TRUST</div>
+      <!-- Footer Section -->
+      <div class="footer-section">
+        <table class="footer-table">
+          <tr>
+            <td style="width: 70%;">
+              <div class="footer-info">
+                <div class="company-name">
+                  <%= company && company.name ? company.name : 'SPICE EXPRESS' %>
+                </div>
+                <strong>Registered Office:</strong>
+                <%= company && company.address ? company.address : 'Block D, Plot No. D 464, Martin nagar, Mankapur,' %>
+                  Nagpur - 440002, <%= company && company.state ? company.state : 'Maharashtra' %>.<br />
+                    <strong>Email:</strong>
+                    <%= company && company.email ? company.email : 'info@spiceexpress.co.in' %><br />
+                      <strong>Web:</strong>
+                      <%= company && company.website ? company.website : 'www.spiceexpress.in' %><br />
+                        <strong>CIN:</strong>
+                        <%= company && company.cin ? company.cin : '' %>
+              </div>
+            </td>
+            <td style="width: 30%; text-align: right; vertical-align: bottom;">
+              <div class="footer-badge">SPEED YOU TRUST</div>
+            </td>
+          </tr>
+        </table>
       </div>
 
     </div>

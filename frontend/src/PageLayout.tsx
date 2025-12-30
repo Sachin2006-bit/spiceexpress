@@ -11,7 +11,7 @@ import Analytics from './pages/Analytics';
 import Customers from './pages/Customers';
 import CustomerList from './pages/CustomerList';
 import AddCustomer from './pages/AddCustomer';
-import RateMapping from './pages/RateMapping';
+import EditCustomer from './pages/EditCustomer';
 import Invoices from './pages/Invoices';
 import InvoiceDetailsPage from './pages/InvoiceDetailsPage';
 import LRsPage from './pages/LRsPage';
@@ -55,10 +55,10 @@ const PageLayout = ({ isAuthed, darkMode, setDarkMode, sidebarOpen, setSidebarOp
                 <button className="px-3 py-2 rounded bg-red-600 text-white" onClick={() => {
                   localStorage.removeItem('auth_token');
                   localStorage.removeItem('user');
-                  
+
                   // Trigger auth state change event
                   window.dispatchEvent(new CustomEvent('authStateChanged'));
-                  
+
                   window.location.href = '/login';
                 }}>Go to Login</button>
               </div>
@@ -111,7 +111,7 @@ const PageLayout = ({ isAuthed, darkMode, setDarkMode, sidebarOpen, setSidebarOp
             </div>
           </header>
         )}
-  <div className="relative">
+        <div className="relative">
           {/* Sidebar: hidden on mobile, visible on sm+ */}
           {isAuthed && !isLanding && (
             <>
@@ -149,9 +149,9 @@ const PageLayout = ({ isAuthed, darkMode, setDarkMode, sidebarOpen, setSidebarOp
               </div>
             </>
           )}
-      {/* Main content: add left margin for sidebar on desktop.
+          {/* Main content: add left margin for sidebar on desktop.
         Only enable an internal scroll container for authenticated app pages; the landing page should use the natural body scroll. */}
-      <main className={isAuthed && !isLanding ? "flex-1 overflow-auto sm:ml-64" : "flex-1"}>
+          <main className={isAuthed && !isLanding ? "flex-1 overflow-auto sm:ml-64" : "flex-1"}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
@@ -163,11 +163,11 @@ const PageLayout = ({ isAuthed, darkMode, setDarkMode, sidebarOpen, setSidebarOp
               <Route path="/customers" element={<PrivateRoute roles={["admin"]}><Customers /></PrivateRoute>} />
               <Route path="/admin/customer-list" element={<PrivateRoute roles={["admin"]}><CustomerList /></PrivateRoute>} />
               <Route path="/admin/add-customer" element={<PrivateRoute roles={["admin"]}><AddCustomer /></PrivateRoute>} />
-              <Route path="/rates" element={<PrivateRoute roles={["admin"]}><RateMapping /></PrivateRoute>} />
-              <Route path="/invoices" element={<PrivateRoute roles={["admin","user"]}><Invoices /></PrivateRoute>} />
-              <Route path="/invoices/:invoiceId" element={<PrivateRoute roles={["admin","user"]}><InvoiceDetailsPage /></PrivateRoute>} />
-              <Route path="/lrs" element={<PrivateRoute roles={["admin","user"]}><LRsPage /></PrivateRoute>} />
-              <Route path="/lrs/:lrId" element={<PrivateRoute roles={["admin","user"]}><LRDetailsPage /></PrivateRoute>} />
+              <Route path="/admin/edit-customer/:id" element={<PrivateRoute roles={["admin"]}><EditCustomer /></PrivateRoute>} />
+              <Route path="/invoices" element={<PrivateRoute roles={["admin", "user"]}><Invoices /></PrivateRoute>} />
+              <Route path="/invoices/:invoiceId" element={<PrivateRoute roles={["admin", "user"]}><InvoiceDetailsPage /></PrivateRoute>} />
+              <Route path="/lrs" element={<PrivateRoute roles={["admin", "user"]}><LRsPage /></PrivateRoute>} />
+              <Route path="/lrs/:lrId" element={<PrivateRoute roles={["admin", "user"]}><LRDetailsPage /></PrivateRoute>} />
               <Route path="/create-lr" element={<PrivateRoute roles={["admin"]}><CreateLR /></PrivateRoute>} />
               <Route path="/edit-lr/:lrId" element={<PrivateRoute roles={["admin"]}><CreateLR editMode={true} /></PrivateRoute>} />
               <Route path="/mis" element={<PrivateRoute roles={["admin"]}><MIS /></PrivateRoute>} />

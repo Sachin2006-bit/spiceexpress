@@ -8,13 +8,21 @@ const shipmentTypes = ["Prepaid", "Collect"];
 const transportTypes = ["Road", "Air", "Rail", "Sea"];
 const rateTypes = ["By Package", "By Weight", "Flat Rate"];
 
+// Billing type options with descriptions
+const billingTypes = [
+	{ value: 'TBB', label: 'TBB (To Be Billed)', description: 'Credit customer - charges auto-calculated from saved rates' },
+	{ value: 'PAID', label: 'PAID (Prepaid)', description: 'Payment collected at booking - manual entry' },
+	{ value: 'TOPAY', label: 'TOPAY (Cash on Delivery)', description: 'Payment collected at delivery - manual entry' },
+	{ value: 'FOC', label: 'FOC (Free of Cost)', description: 'Internal shipment - no charges' },
+];
+
 const indianStates = [
 	"Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
 export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	// Charges/fare fields
-	const [paymentType, setPaymentType] = useState('Billed');
+	const [paymentType, setPaymentType] = useState('TBB');
 	const [freight, setFreight] = useState(0);
 	const [docketCharge, setDocketCharge] = useState(0);
 	const [doorDeliveryCharge, setDoorDeliveryCharge] = useState(0);
@@ -28,6 +36,7 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	const [carrierRisk, setCarrierRisk] = useState(0);
 	const [ownerRisk, setOwnerRisk] = useState(0);
 	const [gstCharge, setGstCharge] = useState(0);
+	const [gstPercent, setGstPercent] = useState(0); // GST percentage from customer profile
 	const [total, setTotal] = useState(0);
 	const { lrId } = useParams();
 
@@ -88,8 +97,10 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	const [chargedWeight, setChargedWeight] = useState("");
 	const [awbNumber, setAwbNumber] = useState("");
 	const [code, setCode] = useState("");
-	const [date, setDate] = useState("");
-	const [time, setTime] = useState("");
+	// Default date to today (YYYY-MM-DD format for input type="date")
+	const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+	// Default time to current time (HH:MM format for input type="time")
+	const [time, setTime] = useState(() => new Date().toTimeString().slice(0, 5));
 	const [customerType, setCustomerType] = useState(customerTypes[0]);
 	const [shipmentType, setShipmentType] = useState(shipmentTypes[0]);
 	const [transportType, setTransportType] = useState(transportTypes[0]);
@@ -130,6 +141,7 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	}, []);
 
 	// Autofill sender details when senderCustomerId changes and set main customer
+	// Also apply default charges from customer profile
 	useEffect(() => {
 		if (!senderCustomerId) return;
 		const c = customers.find(c => c._id === senderCustomerId);
@@ -143,6 +155,23 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 			setSenderEmail(c.email || "");
 			setSenderGstin(c.gstin || "");
 			setCustomer(c._id); // Set main customer to sender
+
+			// Apply default charges from customer profile
+			if (c.defaultCharges) {
+				setDocketCharge(c.defaultCharges.docketCharge || 0);
+				setDoorDeliveryCharge(c.defaultCharges.doorDeliveryCharge || 0);
+				setHandlingCharge(c.defaultCharges.handlingCharge || 0);
+				setPickupCharge(c.defaultCharges.pickupCharge || 0);
+				setTranshipmentCharge(c.defaultCharges.transhipmentCharge || 0);
+				setInsurance(c.defaultCharges.insurance || 0);
+				setFuelSurcharge(c.defaultCharges.fuelSurcharge || 0);
+				setCommission(c.defaultCharges.commission || 0);
+				setOther(c.defaultCharges.other || 0);
+				setCarrierRisk(c.defaultCharges.carrierRisk || 0);
+				setOwnerRisk(c.defaultCharges.ownerRisk || 0);
+				// Store GST percent for calculation (we'll calculate GST amount later)
+				setGstPercent(c.defaultCharges.gstPercent || 0);
+			}
 		}
 	}, [senderCustomerId, customers]);
 
@@ -162,6 +191,49 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 		}
 	}, [receiverCustomerId, customers]);
 
+	// Auto-calculate freight based on lane rate when cities and weight/packages change
+	useEffect(() => {
+		if (!senderCustomerId) return;
+		const senderCustomer = customers.find(c => c._id === senderCustomerId);
+		if (!senderCustomer?.rate) return;
+
+		// Look for a matching lane rate (from sender city to receiver city)
+		const fromCity = senderCity.toLowerCase().trim();
+		const toCity = receiverCity.toLowerCase().trim();
+		if (!fromCity || !toCity) return;
+
+		const laneKey = `${fromCity}-${toCity}`;
+		const laneRate = senderCustomer.rate[laneKey];
+
+		if (laneRate) {
+			let calculatedFreight = 0;
+			if (laneRate.rateType === 'perKg') {
+				const weight = parseFloat(chargedWeight) || 0;
+				calculatedFreight = laneRate.rate * weight;
+			} else if (laneRate.rateType === 'perPackage') {
+				const packages = parseInt(numPackages) || 0;
+				calculatedFreight = laneRate.rate * packages;
+			}
+			setFreight(Math.round(calculatedFreight * 100) / 100);
+		}
+	}, [senderCustomerId, senderCity, receiverCity, chargedWeight, numPackages, customers]);
+
+	// Auto-calculate total with GST whenever any charge changes
+	useEffect(() => {
+		const subtotal = freight + docketCharge + doorDeliveryCharge + handlingCharge +
+			pickupCharge + transhipmentCharge + insurance + fuelSurcharge +
+			commission + other + carrierRisk + ownerRisk;
+
+		// Calculate GST amount from percentage
+		const calculatedGst = (subtotal * gstPercent) / 100;
+		setGstCharge(Math.round(calculatedGst * 100) / 100);
+
+		const grandTotal = subtotal + calculatedGst;
+		setTotal(Math.round(grandTotal * 100) / 100);
+	}, [freight, docketCharge, doorDeliveryCharge, handlingCharge, pickupCharge,
+		transhipmentCharge, insurance, fuelSurcharge, commission, other,
+		carrierRisk, ownerRisk, gstPercent]);
+
 	// Add navigation and form logic
 	const handleSave = async (e: React.FormEvent) => {
 		console.log('Edit mode:', editMode, 'LR ID:', lrId);
@@ -169,7 +241,7 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 		e.preventDefault();
 		// Minimal validation for required fields
 		const newErrors: { [key: string]: string } = {};
-		if (!awbNumber) newErrors.awbNumber = "AWB Number is required";
+		// AWB Number is optional - will auto-generate if not provided
 		if (!date) newErrors.date = "Date is required";
 		if (!customerType) newErrors.customerType = "Customer Type is required";
 		if (!shipmentType) newErrors.shipmentType = "Shipment Type is required";
@@ -186,7 +258,8 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 		setErrors({});
 		// Compose backend payload with required fields
 		const data = {
-			lrNumber: awbNumber,
+			lrNumber: awbNumber || undefined, // Let backend auto-generate if empty
+			companyCode: code || '11', // Pass company code for LR number prefix
 			bookingDate: date,
 			status: 'Booked' as 'Booked', // fix type for backend
 			customer,
@@ -240,11 +313,12 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 			if (editMode && lrId) {
 				await lrApi.update(lrId, data);
 				alert('LR updated successfully!');
+				navigate(`/lrs/${lrId}`);
 			} else {
-				await lrApi.create(data);
+				const newLR = await lrApi.create(data);
 				alert('LR created successfully!');
+				navigate(`/lrs/${newLR._id}`);
 			}
-			navigate(`/lrs/${lrId}`);
 		} catch (err: any) {
 			alert('Failed to create LR: ' + (err && err.message ? err.message : err));
 		}
@@ -310,6 +384,76 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 				</div>
 			</div>
 
+			{/* Billing Type Section - PROMINENT SELECTOR */}
+			<div className="mb-6 p-6 rounded shadow bg-white dark:bg-gray-800">
+				<h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Billing Type</h2>
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+					{billingTypes.map((type) => (
+						<label
+							key={type.value}
+							className={`relative flex flex-col items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${paymentType === type.value
+								? type.value === 'TBB' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+									: type.value === 'PAID' ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+										: type.value === 'TOPAY' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+											: 'border-gray-500 bg-gray-50 dark:bg-gray-700/20'
+								: 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+								}`}
+						>
+							<input
+								type="radio"
+								name="billingType"
+								value={type.value}
+								checked={paymentType === type.value}
+								onChange={(e) => {
+									setPaymentType(e.target.value);
+									// Reset charges to 0 if FOC selected
+									if (e.target.value === 'FOC') {
+										setFreight(0);
+										setDocketCharge(0);
+										setDoorDeliveryCharge(0);
+										setHandlingCharge(0);
+										setPickupCharge(0);
+										setTranshipmentCharge(0);
+										setInsurance(0);
+										setFuelSurcharge(0);
+										setCommission(0);
+										setOther(0);
+										setCarrierRisk(0);
+										setOwnerRisk(0);
+										setGstCharge(0);
+										setGstPercent(0);
+									}
+								}}
+								className="sr-only"
+							/>
+							<span className={`text-lg font-bold ${paymentType === type.value
+								? type.value === 'TBB' ? 'text-purple-700 dark:text-purple-300'
+									: type.value === 'PAID' ? 'text-green-700 dark:text-green-300'
+										: type.value === 'TOPAY' ? 'text-orange-700 dark:text-orange-300'
+											: 'text-gray-700 dark:text-gray-300'
+								: 'text-gray-700 dark:text-gray-300'
+								}`}>
+								{type.value}
+							</span>
+							<span className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
+								{type.value === 'TBB' ? 'Credit Customer'
+									: type.value === 'PAID' ? 'Prepaid'
+										: type.value === 'TOPAY' ? 'Cash on Delivery'
+											: 'Free Shipment'}
+							</span>
+						</label>
+					))}
+				</div>
+				{/* Info banner based on billing type */}
+				<div className={`p-3 rounded-lg text-sm ${paymentType === 'TBB' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+					: paymentType === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+						: paymentType === 'TOPAY' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+							: 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300'
+					}`}>
+					ℹ️ {billingTypes.find(t => t.value === paymentType)?.description}
+				</div>
+			</div>
+
 			{/* Shipment Type Section */}
 			<div className="bg-white dark:bg-gray-800 rounded shadow p-6 mb-6">
 				<h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Shipment Type</h2>
@@ -372,7 +516,14 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 				{/* Sender's Information */}
 				<div className="bg-white dark:bg-gray-800 rounded shadow p-6">
 					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Sender's Information</h2>
+						<div>
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Consignor (Sender)</h2>
+							{paymentType === 'TBB' && (
+								<span className="text-xs text-purple-600 dark:text-purple-400">
+									{senderCustomerId ? '✓ Customer selected - charges auto-applied' : '⚠️ Select a customer to auto-calculate charges'}
+								</span>
+							)}
+						</div>
 						<div className="relative">
 							<input
 								type="text"
@@ -639,68 +790,171 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 				</div>
 			</div>
 
-			{/* Taxes & Duties Section */}
-			<div className="bg-white dark:bg-gray-800 rounded shadow p-6 mb-6">
-				<h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Taxes & Duties</h2>
-				<div className="space-y-4">
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Freight</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={freight} onChange={e => setFreight(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Docket Charge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={docketCharge} onChange={e => setDocketCharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Door Dly.Charge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={doorDeliveryCharge} onChange={e => setDoorDeliveryCharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Handling Charge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={handlingCharge} onChange={e => setHandlingCharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Pickup Charge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={pickupCharge} onChange={e => setPickupCharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Transhipment Charge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={transhipmentCharge} onChange={e => setTranshipmentCharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Insurance</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={insurance} onChange={e => setInsurance(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Fuel Surcharge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={fuelSurcharge} onChange={e => setFuelSurcharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Commission</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={commission} onChange={e => setCommission(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Other</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={other} onChange={e => setOther(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Carrier Risk</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={carrierRisk} onChange={e => setCarrierRisk(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Owner Risk</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={ownerRisk} onChange={e => setOwnerRisk(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">GST Charge</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={gstCharge} onChange={e => setGstCharge(Number(e.target.value))} />
-					</div>
-					<div>
-						<label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Total</label>
-						<input type="number" className="w-full border rounded px-3 py-2 text-sm font-bold bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" value={total} onChange={e => setTotal(Number(e.target.value))} />
+			{/* Taxes & Duties Section - Conditional based on billing type */}
+			{paymentType === 'FOC' ? (
+				// FOC - Show banner only, no charges
+				<div className="bg-gray-100 dark:bg-gray-800 rounded shadow p-6 mb-6">
+					<div className="flex items-center gap-3">
+						<span className="text-2xl">📦</span>
+						<div>
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Free of Cost Shipment</h2>
+							<p className="text-sm text-gray-600 dark:text-gray-400">No charges applicable - internal company shipment</p>
+						</div>
 					</div>
 				</div>
-			</div>
+			) : (
+				<div className="bg-white dark:bg-gray-800 rounded shadow p-6 mb-6">
+					<div className="flex justify-between items-center mb-4">
+						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Taxes & Duties</h2>
+						{paymentType === 'TBB' && (
+							<span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-1 rounded">
+								Auto-calculated from customer rates
+							</span>
+						)}
+					</div>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Freight</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={freight}
+								onChange={e => setFreight(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Docket Charge</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={docketCharge}
+								onChange={e => setDocketCharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Door Delivery</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={doorDeliveryCharge}
+								onChange={e => setDoorDeliveryCharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Handling</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={handlingCharge}
+								onChange={e => setHandlingCharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Pickup</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={pickupCharge}
+								onChange={e => setPickupCharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Transhipment</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={transhipmentCharge}
+								onChange={e => setTranshipmentCharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Insurance</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={insurance}
+								onChange={e => setInsurance(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Fuel Surcharge</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={fuelSurcharge}
+								onChange={e => setFuelSurcharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Commission</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={commission}
+								onChange={e => setCommission(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Other</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={other}
+								onChange={e => setOther(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Carrier Risk</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={carrierRisk}
+								onChange={e => setCarrierRisk(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Owner Risk</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={ownerRisk}
+								onChange={e => setOwnerRisk(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">GST Charge</label>
+							<input
+								type="number"
+								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+								value={gstCharge}
+								onChange={e => setGstCharge(Number(e.target.value))}
+								disabled={paymentType === 'TBB'}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Total</label>
+							<input
+								type="number"
+								className="w-full border rounded px-3 py-2 text-sm font-bold bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700 cursor-not-allowed"
+								value={total}
+								readOnly
+							/>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{/* Action Buttons */}
 			<div className="flex justify-between items-center mt-6">

@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 const jwtSecret = process.env.JWT_SECRET || 'dev_secret_change_me';
-const jwtExpiry = '7d';
+const jwtExpiry = '60d'; // 60 days (~2 months)
 
 export const register = async (req, res) => {
   try {

@@ -36,12 +36,51 @@ export const getAllCustomers = async (req, res) => {
 export const createCustomer = async (req, res) => {
   try {
     const {
-      code, name, company, address, state, city, pin, phone, fax, email, hsnCode, cftRatio, gst1, gstin, pan, bankName, accountNo, micr, ifsc
+      code, name, company, address, state, city, pin, phone, fax, email, hsnCode, cftRatio, gst1, gstin, pan, bankName, accountNo, micr, ifsc, rate
     } = req.body;
+
+    // Auto-generate customer code if not provided
+    let customerCode = code;
+    if (!customerCode || customerCode.trim() === '') {
+      const year = new Date().getFullYear();
+      // Count existing customers to get next sequence number
+      const count = await Customer.countDocuments({
+        code: { $regex: `^CUST${year}` }
+      });
+      // Format: CUST + YEAR + 3-digit sequence (e.g., CUST2025001)
+      customerCode = `CUST${year}${String(count + 1).padStart(3, '0')}`;
+    }
+
     // Auto-set name from company if not provided
-    const customerName = name || company || code;
+    const customerName = name || company || customerCode;
+
+    // Handle rate if provided
+    let customerRate = undefined;
+    if (rate && typeof rate === 'object') {
+      customerRate = new Map(Object.entries(rate));
+    }
+
     const customer = await Customer.create({
-      code, name: customerName, company, address, state, city, pin, phone, fax, email, hsnCode, cftRatio, gst1, gstin, pan, bankName, accountNo, micr, ifsc
+      code: customerCode,
+      name: customerName,
+      company,
+      address,
+      state,
+      city,
+      pin,
+      phone,
+      fax,
+      email,
+      hsnCode,
+      cftRatio,
+      gst1,
+      gstin,
+      pan,
+      bankName,
+      accountNo,
+      micr,
+      ifsc,
+      rate: customerRate
     });
     res.status(201).json(customer);
   } catch (err) {

@@ -96,3 +96,4 @@ Thumbs.db
 # Uploads
 backend/public/uploads/*
 !backend/public/uploads/.gitkeep
+!backend/public/uploads/logos/

@@ -67,6 +67,22 @@ export default function LRsPage() {
     }
   };
 
+  // Billing type badge colors
+  const billingTypeColor = (type: string) => {
+    switch (type) {
+      case 'TBB':
+        return 'purple';
+      case 'PAID':
+        return 'green';
+      case 'TOPAY':
+        return 'orange';
+      case 'FOC':
+        return 'gray';
+      default:
+        return 'gray';
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-full">
@@ -132,10 +148,13 @@ export default function LRsPage() {
             <Card key={lr._id} className="bg-white dark:bg-gray-800 dark:border-gray-700">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(lr.date).toLocaleDateString()}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{lr.bookingDate ? new Date(lr.bookingDate).toLocaleDateString() : '-'}</div>
                   <div className="text-lg font-medium text-gray-900 dark:text-gray-100">{lr.lrNumber}</div>
                 </div>
-                <Badge text={lr.status} color={statusColor(lr.status) as any} />
+                <div className="flex gap-2">
+                  <Badge text={lr.charges?.paymentType || 'TBB'} color={billingTypeColor(lr.charges?.paymentType || 'TBB') as any} />
+                  <Badge text={lr.status} color={statusColor(lr.status) as any} />
+                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -149,7 +168,7 @@ export default function LRsPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">Total Cost</div>
-                  <div className="text-gray-900 dark:text-gray-100 font-semibold">₹ {lr.charges?.grandTotal ? lr.charges.grandTotal.toLocaleString() : 'N/A'}</div>
+                  <div className="text-gray-900 dark:text-gray-100 font-semibold">₹ {lr.charges?.total ? lr.charges.total.toLocaleString() : 'N/A'}</div>
                 </div>
               </div>
 

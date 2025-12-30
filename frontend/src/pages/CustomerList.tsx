@@ -36,38 +36,7 @@ export default function CustomerList() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
-  // Edit modal state
-  const [editModal, setEditModal] = useState<{ open: boolean; customer: Customer | null }>({ open: false, customer: null });
-  const [editForm, setEditForm] = useState<Partial<Customer>>({});
-  const [editLoading, setEditLoading] = useState(false);
-  // Delete loading state
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
-  // Edit handlers
-  const openEdit = (customer: Customer) => {
-    setEditForm({ ...customer });
-    setEditModal({ open: true, customer });
-  };
-  const closeEdit = () => {
-    setEditModal({ open: false, customer: null });
-    setEditForm({});
-  };
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm(f => ({ ...f, [e.target.name]: e.target.value }));
-  };
-  const saveEdit = async () => {
-    if (!editModal.customer) return;
-    setEditLoading(true);
-    try {
-      await customerApi.update(editModal.customer._id, editForm);
-      setCustomers(cs => cs.map(c => c._id === editModal.customer!._id ? { ...c, ...editForm } : c));
-      setFiltered(fs => fs.map(c => c._id === editModal.customer!._id ? { ...c, ...editForm } : c));
-      closeEdit();
-    } catch (err) {
-      alert('Failed to update customer');
-    } finally {
-      setEditLoading(false);
-    }
-  };
 
   // Delete handler
   const handleDelete = async (id: string) => {
@@ -146,9 +115,9 @@ export default function CustomerList() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Consignee Code</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Consignee Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">State Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer Code</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">State</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created By</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -178,7 +147,7 @@ export default function CustomerList() {
                   <td className="px-6 py-4 whitespace-nowrap flex gap-2">
                     <button
                       className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
-                      onClick={() => openEdit(c)}
+                      onClick={() => navigate(`/admin/edit-customer/${c._id}`)}
                       type="button"
                     >Edit</button>
                     <button
@@ -203,108 +172,15 @@ export default function CustomerList() {
         >
           Prev
         </button>
-        <span className="text-gray-700 dark:text-gray-200">Page {page} of {totalPages}</span>
+        <span className="text-gray-700 dark:text-gray-200">Page {page} of {totalPages || 1}</span>
         <button
           className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-50"
           onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-          disabled={page === totalPages}
+          disabled={page === totalPages || totalPages === 0}
         >
           Next
         </button>
       </div>
-    {/* Edit Modal */}
-    {editModal.open && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 w-full max-w-md relative">
-          <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-900" onClick={closeEdit}>&times;</button>
-          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Edit Customer</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Company</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="company" value={editForm.company || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Address</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="address" value={editForm.address || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">State</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="state" value={editForm.state || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">City</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="city" value={editForm.city || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Pin</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="pin" value={editForm.pin || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Phone</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="phone" value={editForm.phone || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Fax</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="fax" value={editForm.fax || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Email</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="email" value={editForm.email || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">HSN Code</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="hsnCode" value={editForm.hsnCode || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">CFT Ratio</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="cftRatio" value={editForm.cftRatio || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">GST 1</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="gst1" value={editForm.gst1 || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">GSTIN</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="gstin" value={editForm.gstin || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">PAN</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="pan" value={editForm.pan || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Bank Name</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="bankName" value={editForm.bankName || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">Account No</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="accountNo" value={editForm.accountNo || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">MICR</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="micr" value={editForm.micr || ''} onChange={handleEditChange} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">IFSC</label>
-              <input className="border rounded px-3 py-2 w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" name="ifsc" value={editForm.ifsc || ''} onChange={handleEditChange} />
-            </div>
-          </div>
-          <div className="flex gap-4 mt-6 justify-end">
-            <button
-              className="px-5 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-              onClick={closeEdit}
-              type="button"
-              disabled={editLoading}
-            >Cancel</button>
-            <button
-              className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              onClick={saveEdit}
-              type="button"
-              disabled={editLoading}
-            >{editLoading ? 'Saving...' : 'Save'}</button>
-          </div>
-        </div>
-      </div>
-    )}
     </div>
   );
 }
