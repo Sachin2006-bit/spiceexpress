@@ -5,7 +5,9 @@ const laneRateSchema = new mongoose.Schema({
   from: { type: String, required: true },
   to: { type: String, required: true },
   rateType: { type: String, enum: ['perKg', 'perPackage'], default: 'perKg' },
-  rate: { type: Number, required: true }
+  rate: { type: Number }, // Made optional to support legacy
+  ratePerKg: { type: Number }, // Legacy support
+  ratePerPackage: { type: Number } // Legacy support
 }, { _id: false });
 
 // Default charges schema for preset taxes & duties

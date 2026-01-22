@@ -1,7 +1,7 @@
 export const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
-    const customer = await Customer.findById(id);
+    const customer = await Customer.findById(id).lean();
     if (!customer) return res.status(404).json({ error: 'Customer not found' });
     res.json(customer);
   } catch (err) {
@@ -29,7 +29,7 @@ import LR from '../models/LR.js';
 import Invoice from '../models/Invoice.js';
 
 export const getAllCustomers = async (req, res) => {
-  const customers = await Customer.find();
+  const customers = await Customer.find().lean();
   res.json(customers);
 };
 

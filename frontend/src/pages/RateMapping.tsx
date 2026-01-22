@@ -10,6 +10,20 @@ export default function RateMapping() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [newLane, setNewLane] = useState<{ from: string; to: string; rate: string; rateType: 'perKg' | 'perPackage' }>({ from: '', to: '', rate: '', rateType: 'perKg' });
+  const [defaultCharges, setDefaultCharges] = useState<any>({
+    docketCharge: 0,
+    doorDeliveryCharge: 0,
+    handlingCharge: 0,
+    pickupCharge: 0,
+    transhipmentCharge: 0,
+    insurance: 0,
+    fuelSurcharge: 0,
+    commission: 0,
+    other: 0,
+    carrierRisk: 0,
+    ownerRisk: 0,
+    gstPercent: 0
+  });
   const [, setLoading] = useState(false); // loading state not used but setLoading is called
   const [error, setError] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -154,6 +168,14 @@ export default function RateMapping() {
                       onClick={() => {
                         setSelectedCustomer(c);
                         setCustomerSearch('');
+                        if (c.defaultCharges) {
+                          setDefaultCharges(c.defaultCharges);
+                        } else {
+                          // reset to 0 if no default charges
+                          setDefaultCharges({
+                            docketCharge: 0, doorDeliveryCharge: 0, handlingCharge: 0, pickupCharge: 0, transhipmentCharge: 0, insurance: 0, fuelSurcharge: 0, commission: 0, other: 0, carrierRisk: 0, ownerRisk: 0, gstPercent: 0
+                          });
+                        }
                       }}
                     >
                       <span className="font-medium">{c.code}</span> - {c.company}
@@ -222,26 +244,67 @@ export default function RateMapping() {
             </div>
             {/* List existing lanes */}
             {selectedCustomer.rate && Object.keys(selectedCustomer.rate).length > 0 ? (
-              <div className="space-y-3">
-                {Object.entries(selectedCustomer.rate).map(([laneKey, lane]) => (
-                  <div key={laneKey} className="flex items-center gap-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-900">
-                    <span className="text-gray-900 dark:text-gray-100 font-medium w-40">{lane.from} - {lane.to}</span>
-                    <span className="text-gray-700 dark:text-gray-200 w-40">@ ₹{lane.rate} / {lane.rateType === 'perKg' ? 'kg' : 'pkg'}</span>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="ml-2"
-                      onClick={() => deleteLaneRate(laneKey)}
-                    >
-                      Delete
-                    </Button>
+              <div className="space-y-3 mb-8">
+                {Object.entries(selectedCustomer.rate).map(([laneKey, lane]) => {
+                  const rateVal = lane.rate || lane.ratePerKg || lane.ratePerPackage || 0;
+                  const rateType = lane.rateType || (lane.ratePerPackage ? 'perPackage' : 'perKg');
+                  return (
+                    <div key={laneKey} className="flex items-center gap-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-900">
+                      <span className="text-gray-900 dark:text-gray-100 font-medium w-40">{lane.from} - {lane.to}</span>
+                      <span className="text-gray-700 dark:text-gray-200 w-40">@ ₹{rateVal} / {rateType === 'perKg' ? 'kg' : 'pkg'}</span>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="ml-2"
+                        onClick={() => deleteLaneRate(laneKey)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-gray-500 dark:text-gray-400 mb-8">No lanes added.</div>
+            )}
+
+            {/* Default Charges Section */}
+            <div className="border-t pt-6 mt-6">
+              <Label className="text-lg font-semibold mb-4 block">Default Charges (Taxes & Duties)</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                {Object.keys(defaultCharges).map((key) => (
+                  <div key={key}>
+                    <Label className="capitalize text-xs mb-1 block">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                    <Input
+                      type="number"
+                      value={defaultCharges[key]}
+                      onChange={(e) => setDefaultCharges({ ...defaultCharges, [key]: parseFloat(e.target.value) || 0 })}
+                      className="h-8"
+                      min="0"
+                      step="0.01"
+                    />
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-gray-500 dark:text-gray-400">No lanes added.</div>
-            )}
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (!selectedCustomer) return;
+                  try {
+                    const updatedCustomer = { ...selectedCustomer, defaultCharges };
+                    await customerApi.update(selectedCustomer._id, updatedCustomer);
+                    setSelectedCustomer(updatedCustomer);
+                    alert('Charges updated successfully');
+                  } catch (e) {
+                    setError('Failed to update charges');
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Save Charges
+              </Button>
+            </div>
             {error && (
               <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 dark:bg-red-950 dark:border-red-900">
                 <div className="text-red-800 text-sm dark:text-red-300">{error}</div>

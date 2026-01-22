@@ -68,6 +68,8 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 				setActualWeight(lr.shipmentDetails?.actualWeight?.toString() || "");
 				setChargedWeight(lr.shipmentDetails?.chargedWeight?.toString() || "");
 				setShipmentDescription(lr.shipmentDetails?.descriptionOfGoods || "");
+				setExpectedDelivery(lr.shipmentDetails?.expectedDeliveryDate ? new Date(lr.shipmentDetails?.expectedDeliveryDate).toISOString().slice(0, 10) : "");
+				setShipmentValue(lr.shipmentDetails?.declaredValue ? lr.shipmentDetails.declaredValue.toString() : "");
 				// Charges
 				setPaymentType(lr.charges?.paymentType || 'Billed');
 				setFreight(lr.charges?.freight || 0);
@@ -105,6 +107,9 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	const [shipmentType, setShipmentType] = useState(shipmentTypes[0]);
 	const [transportType, setTransportType] = useState(transportTypes[0]);
 	const [rateType, setRateType] = useState(rateTypes[0]);
+	// Per-rate inputs for PAID/TOPAY manual entry modes
+	const [perKgRate, setPerKgRate] = useState(0);
+	const [perPackageRate, setPerPackageRate] = useState(0);
 	// Add sender/receiver state
 	const [senderState, setSenderState] = useState("");
 	const [receiverState, setReceiverState] = useState("");
@@ -135,7 +140,13 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 	useEffect(() => {
 		setLoadingCustomers(true);
 		customerApi.getAll()
-			.then(data => setCustomers(data))
+			.then(data => {
+				console.log('✅ Fetched Customers:', data);
+				if (data.length > 0) {
+					// console.log('🔍 First Customer Rate Type:', typeof data[0].rate, data[0].rate);
+				}
+				setCustomers(data);
+			})
 			.catch(() => setCustomers([]))
 			.finally(() => setLoadingCustomers(false));
 	}, []);
@@ -191,8 +202,10 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 		}
 	}, [receiverCustomerId, customers]);
 
-	// Auto-calculate freight based on lane rate when cities and weight/packages change
+	// Auto-calculate freight based on lane rate when cities and weight/packages change (TBB mode)
 	useEffect(() => {
+		// Only auto-calculate from lane rates for TBB (credit customer mode)
+		if (paymentType !== 'TBB') return;
 		if (!senderCustomerId) return;
 		const senderCustomer = customers.find(c => c._id === senderCustomerId);
 		if (!senderCustomer?.rate) return;
@@ -207,32 +220,84 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 
 		if (laneRate) {
 			let calculatedFreight = 0;
-			if (laneRate.rateType === 'perKg') {
+			// Handle legacy data where rate might be in ratePerKg and rateType might be missing
+			const rateValue = laneRate.rate || laneRate.ratePerKg || 0;
+			const type = laneRate.rateType || (laneRate.ratePerKg ? 'perKg' : 'perKg');
+
+			if (type === 'perKg') {
 				const weight = parseFloat(chargedWeight) || 0;
-				calculatedFreight = laneRate.rate * weight;
-			} else if (laneRate.rateType === 'perPackage') {
+				calculatedFreight = rateValue * weight;
+			} else if (type === 'perPackage') {
 				const packages = parseInt(numPackages) || 0;
-				calculatedFreight = laneRate.rate * packages;
+				calculatedFreight = rateValue * packages;
 			}
 			setFreight(Math.round(calculatedFreight * 100) / 100);
 		}
-	}, [senderCustomerId, senderCity, receiverCity, chargedWeight, numPackages, customers]);
+	}, [paymentType, senderCustomerId, senderCity, receiverCity, chargedWeight, numPackages, customers]);
 
-	// Auto-calculate total with GST whenever any charge changes
+	// Auto-calculate freight from per-rate inputs for PAID/TOPAY modes
+	useEffect(() => {
+		// Only auto-calculate for PAID and TOPAY (manual entry modes)
+		if (paymentType !== 'PAID' && paymentType !== 'TOPAY') return;
+
+		let calculatedFreight = 0;
+		if (rateType === 'By Weight') {
+			const weight = parseFloat(chargedWeight) || 0;
+			calculatedFreight = perKgRate * weight;
+		} else if (rateType === 'By Package') {
+			const packages = parseInt(numPackages) || 0;
+			calculatedFreight = perPackageRate * packages;
+		}
+		setFreight(Math.round(calculatedFreight * 100) / 100);
+	}, [paymentType, rateType, chargedWeight, numPackages, perKgRate, perPackageRate]);
+
+	// Auto-set Customer Type and Shipment Type based on billing type
+	useEffect(() => {
+		switch (paymentType) {
+			case 'TBB':
+				setCustomerType('Credit');
+				setShipmentType('Prepaid');
+				break;
+			case 'PAID':
+				setCustomerType('Cash');
+				setShipmentType('Prepaid');
+				break;
+			case 'TOPAY':
+				setCustomerType('To Pay');
+				setShipmentType('Collect');
+				break;
+			case 'FOC':
+				setCustomerType('Credit');
+				setShipmentType('Prepaid');
+				break;
+		}
+	}, [paymentType]);
+
+	// Auto-calculate GST only for TBB (based on customer profile percent)
+	useEffect(() => {
+		if (paymentType !== 'TBB') return; // Skip for others to allow manual entry
+
+		const subtotal = freight + docketCharge + doorDeliveryCharge + handlingCharge +
+			pickupCharge + transhipmentCharge + insurance + fuelSurcharge +
+			commission + other + carrierRisk + ownerRisk;
+
+		const calculatedGst = (subtotal * gstPercent) / 100;
+		setGstCharge(Math.round(calculatedGst * 100) / 100);
+	}, [paymentType, freight, docketCharge, doorDeliveryCharge, handlingCharge, pickupCharge,
+		transhipmentCharge, insurance, fuelSurcharge, commission, other,
+		carrierRisk, ownerRisk, gstPercent]);
+
+	// Auto-calculate total whenever charges or GST changes
 	useEffect(() => {
 		const subtotal = freight + docketCharge + doorDeliveryCharge + handlingCharge +
 			pickupCharge + transhipmentCharge + insurance + fuelSurcharge +
 			commission + other + carrierRisk + ownerRisk;
 
-		// Calculate GST amount from percentage
-		const calculatedGst = (subtotal * gstPercent) / 100;
-		setGstCharge(Math.round(calculatedGst * 100) / 100);
-
-		const grandTotal = subtotal + calculatedGst;
+		const grandTotal = subtotal + gstCharge;
 		setTotal(Math.round(grandTotal * 100) / 100);
 	}, [freight, docketCharge, doorDeliveryCharge, handlingCharge, pickupCharge,
 		transhipmentCharge, insurance, fuelSurcharge, commission, other,
-		carrierRisk, ownerRisk, gstPercent]);
+		carrierRisk, ownerRisk, gstCharge]);
 
 	// Add navigation and form logic
 	const handleSave = async (e: React.FormEvent) => {
@@ -249,7 +314,8 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 		if (!receiverState) newErrors.receiverState = "Receiver State is required";
 		if (!senderName) newErrors.senderName = "Sender Name is required";
 		if (!receiverName) newErrors.receiverName = "Receiver Name is required";
-		if (!customer) newErrors.customer = "Customer is required";
+		// Customer is only required for TBB (credit billing) - PAID/TOPAY/FOC can work without a pre-registered customer
+		if (paymentType === 'TBB' && !customer) newErrors.customer = "Customer is required for TBB billing";
 		// Add more required field checks as needed
 		if (Object.keys(newErrors).length > 0) {
 			setErrors(newErrors);
@@ -287,7 +353,9 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 				numberOfArticles: Number(numPackages),
 				actualWeight: Number(actualWeight),
 				chargedWeight: Number(chargedWeight),
-				descriptionOfGoods: shipmentDescription
+				descriptionOfGoods: shipmentDescription,
+				declaredValue: Number(shipmentValue),
+				expectedDeliveryDate: expectedDelivery || undefined
 			},
 			charges: {
 				paymentType,
@@ -461,28 +529,30 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 					<div>
 						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Customer Type</label>
 						<select
-							className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+							className="w-full border rounded px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
 							value={customerType}
 							onChange={e => setCustomerType(e.target.value)}
+							disabled={true}
 						>
 							{customerTypes.map(type => (
 								<option key={type} value={type}>{type}</option>
 							))}
 						</select>
-						{errors.customerType && <div className="text-red-500 text-xs mt-1">{errors.customerType}</div>}
+						<span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Auto-set based on billing type</span>
 					</div>
 					<div>
 						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Shipment Type</label>
 						<select
-							className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+							className="w-full border rounded px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
 							value={shipmentType}
 							onChange={e => setShipmentType(e.target.value)}
+							disabled={true}
 						>
 							{shipmentTypes.map(type => (
 								<option key={type} value={type}>{type}</option>
 							))}
 						</select>
-						{errors.shipmentType && <div className="text-red-500 text-xs mt-1">{errors.shipmentType}</div>}
+						<span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Auto-set based on billing type</span>
 					</div>
 					<div>
 						<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Transport Type</label>
@@ -790,171 +860,278 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 				</div>
 			</div>
 
-			{/* Taxes & Duties Section - Conditional based on billing type */}
-			{paymentType === 'FOC' ? (
-				// FOC - Show banner only, no charges
-				<div className="bg-gray-100 dark:bg-gray-800 rounded shadow p-6 mb-6">
-					<div className="flex items-center gap-3">
-						<span className="text-2xl">📦</span>
-						<div>
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Free of Cost Shipment</h2>
-							<p className="text-sm text-gray-600 dark:text-gray-400">No charges applicable - internal company shipment</p>
-						</div>
-					</div>
-				</div>
-			) : (
-				<div className="bg-white dark:bg-gray-800 rounded shadow p-6 mb-6">
+
+			{/* Available Rates Section - TBB Only */}
+			{paymentType === 'TBB' && senderCustomerId && (
+				<div className="bg-purple-50 dark:bg-purple-900/20 rounded shadow p-6 mb-6 border border-purple-200 dark:border-purple-800">
 					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Taxes & Duties</h2>
-						{paymentType === 'TBB' && (
-							<span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-1 rounded">
-								Auto-calculated from customer rates
-							</span>
-						)}
+						<h2 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+							Available Rates <span className="text-sm font-normal text-purple-700 dark:text-purple-300">(Select to apply)</span>
+						</h2>
+						<span className="text-xs text-purple-600 dark:text-purple-400">
+							Filtering by: <strong>{rateType}</strong>
+						</span>
 					</div>
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Freight</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={freight}
-								onChange={e => setFreight(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Docket Charge</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={docketCharge}
-								onChange={e => setDocketCharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Door Delivery</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={doorDeliveryCharge}
-								onChange={e => setDoorDeliveryCharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Handling</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={handlingCharge}
-								onChange={e => setHandlingCharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Pickup</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={pickupCharge}
-								onChange={e => setPickupCharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Transhipment</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={transhipmentCharge}
-								onChange={e => setTranshipmentCharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Insurance</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={insurance}
-								onChange={e => setInsurance(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Fuel Surcharge</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={fuelSurcharge}
-								onChange={e => setFuelSurcharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Commission</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={commission}
-								onChange={e => setCommission(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Other</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={other}
-								onChange={e => setOther(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Carrier Risk</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={carrierRisk}
-								onChange={e => setCarrierRisk(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Owner Risk</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={ownerRisk}
-								onChange={e => setOwnerRisk(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">GST Charge</label>
-							<input
-								type="number"
-								className={`w-full border rounded px-3 py-2 text-sm ${paymentType === 'TBB' ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-900'} text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
-								value={gstCharge}
-								onChange={e => setGstCharge(Number(e.target.value))}
-								disabled={paymentType === 'TBB'}
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Total</label>
-							<input
-								type="number"
-								className="w-full border rounded px-3 py-2 text-sm font-bold bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700 cursor-not-allowed"
-								value={total}
-								readOnly
-							/>
-						</div>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						{(() => {
+							const senderCustomer = customers.find(c => c._id === senderCustomerId);
+							if (!senderCustomer || !senderCustomer.rate) return <div className="text-gray-500 italic">No rates found for this customer.</div>;
+
+							// Handle both modern (rate + rateType) and legacy (ratePerKg/ratePerPackage) formats
+							const rates = Object.values(senderCustomer.rate).filter((r: any) => {
+								const type = r.rateType || (r.ratePerKg ? 'perKg' : r.ratePerPackage ? 'perPackage' : 'unknown');
+								if (rateType === 'By Weight') return type === 'perKg';
+								if (rateType === 'By Package') return type === 'perPackage';
+								return true;
+							});
+
+							if (rates.length === 0) return <div className="text-gray-500 italic col-span-full">No rates found for "{rateType}". Switch rate type to see others.</div>;
+
+							return rates.map((rate: any, idx) => {
+								// Normalize rate object
+								const type = rate.rateType || (rate.ratePerKg ? 'perKg' : 'perPackage');
+								const price = rate.rate || rate.ratePerKg || rate.ratePerPackage || 0;
+
+								return (
+									<button
+										key={idx}
+										type="button"
+										onClick={() => {
+											let calculatedFreight = 0;
+											if (type === 'perKg') {
+												const weight = parseFloat(chargedWeight) || 0;
+												calculatedFreight = price * weight;
+											} else if (type === 'perPackage') {
+												const packages = parseInt(numPackages) || 0;
+												calculatedFreight = price * packages;
+											}
+											setFreight(Math.round(calculatedFreight * 100) / 100);
+											// Optional: Update cities if blank?
+											// if (!senderCity) setSenderCity(rate.from);
+											// if (!receiverCity) setReceiverCity(rate.to);
+											alert(`Rate Applied: ₹${price}/${type === 'perKg' ? 'kg' : 'pkg'}`);
+										}}
+										className="flex flex-col items-start p-3 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded hover:shadow-md hover:border-purple-500 transition-all text-left group"
+									>
+										<div className="flex justify-between w-full mb-1">
+											<span className="font-bold text-gray-800 dark:text-gray-200">₹{price} <span className="text-xs font-normal text-gray-500">/{type === 'perKg' ? 'kg' : 'pkg'}</span></span>
+											<span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded group-hover:bg-purple-200">Apply</span>
+										</div>
+										<div className="text-sm text-gray-600 dark:text-gray-400">
+											{rate.from} ➝ {rate.to}
+										</div>
+									</button>
+								);
+							});
+						})()}
 					</div>
 				</div>
 			)}
+
+			{/* Per-Rate Inputs for PAID/TOPAY - shown only when relevant */}
+			{(paymentType === 'PAID' || paymentType === 'TOPAY') && (
+				<div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+					<div className="mb-2">
+						<span className="text-sm font-medium text-blue-800 dark:text-blue-300">💰 Rate Calculation (Freight will be auto-calculated)</span>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						{rateType === 'By Weight' && (
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Per KG Rate (₹)</label>
+								<input
+									type="number"
+									className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-blue-300 dark:border-blue-700 focus:ring-2 focus:ring-blue-500"
+									placeholder="Enter rate per kg"
+									value={perKgRate || ''}
+									onChange={e => setPerKgRate(Number(e.target.value) || 0)}
+									min={0}
+									step="any"
+								/>
+								<span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+									Freight = ₹{perKgRate} × {chargedWeight || 0} kg = ₹{freight}
+								</span>
+							</div>
+						)}
+						{rateType === 'By Package' && (
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Per Package Rate (₹)</label>
+								<input
+									type="number"
+									className="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-blue-300 dark:border-blue-700 focus:ring-2 focus:ring-blue-500"
+									placeholder="Enter rate per package"
+									value={perPackageRate || ''}
+									onChange={e => setPerPackageRate(Number(e.target.value) || 0)}
+									min={0}
+									step="any"
+								/>
+								<span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+									Freight = ₹{perPackageRate} × {numPackages || 0} pkgs = ₹{freight}
+								</span>
+							</div>
+						)}
+						{rateType === 'Flat Rate' && (
+							<div className="text-sm text-gray-600 dark:text-gray-400 col-span-full">
+								Flat Rate selected - enter freight amount directly in Taxes & Duties section below
+							</div>
+						)}
+					</div>
+				</div>
+			)}
+
+			{
+				paymentType === 'FOC' ? (
+					// FOC - Show banner only, no charges
+					<div className="bg-gray-100 dark:bg-gray-800 rounded shadow p-6 mb-6">
+						<div className="flex items-center gap-3">
+							<span className="text-2xl">📦</span>
+							<div>
+								<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Free of Cost Shipment</h2>
+								<p className="text-sm text-gray-600 dark:text-gray-400">No charges applicable - internal company shipment</p>
+							</div>
+						</div>
+					</div>
+				) : (
+					<div className="bg-white dark:bg-gray-800 rounded shadow p-6 mb-6">
+						<div className="flex justify-between items-center mb-4">
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Taxes & Duties</h2>
+							{paymentType === 'TBB' && (
+								<span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-1 rounded">
+									Auto-calculated from customer rates
+								</span>
+							)}
+						</div>
+						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Freight</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={freight}
+									onChange={e => setFreight(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Docket Charge</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={docketCharge}
+									onChange={e => setDocketCharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Door Delivery</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={doorDeliveryCharge}
+									onChange={e => setDoorDeliveryCharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Handling</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={handlingCharge}
+									onChange={e => setHandlingCharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Pickup</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={pickupCharge}
+									onChange={e => setPickupCharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Transhipment</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={transhipmentCharge}
+									onChange={e => setTranshipmentCharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Insurance</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={insurance}
+									onChange={e => setInsurance(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Fuel Surcharge</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={fuelSurcharge}
+									onChange={e => setFuelSurcharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Commission</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={commission}
+									onChange={e => setCommission(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Other</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={other}
+									onChange={e => setOther(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Carrier Risk</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={carrierRisk}
+									onChange={e => setCarrierRisk(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Owner Risk</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={ownerRisk}
+									onChange={e => setOwnerRisk(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">GST Charge</label>
+								<input
+									type="number"
+									className={`w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700`}
+									value={gstCharge}
+									onChange={e => setGstCharge(Number(e.target.value))}
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Total</label>
+								<input
+									type="number"
+									className="w-full border rounded px-3 py-2 text-sm font-bold bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700 cursor-not-allowed"
+									value={total}
+									readOnly
+								/>
+							</div>
+						</div>
+					</div>
+				)
+			}
 
 			{/* Action Buttons */}
 			<div className="flex justify-between items-center mt-6">
@@ -963,6 +1140,6 @@ export default function CreateLR({ editMode = false }: { editMode?: boolean }) {
 					<button type="button" className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700" onClick={handleBack}>Back to Shipments</button>
 				</div>
 			</div>
-		</form>
+		</form >
 	);
 }

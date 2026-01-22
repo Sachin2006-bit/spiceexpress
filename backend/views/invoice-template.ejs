@@ -155,8 +155,8 @@
     }
 
     .summary-header {
-      background: #222 !important;
-      color: #fff !important;
+      background: #fff !important;
+      color: #000 !important;
       text-align: center;
     }
 
@@ -196,8 +196,8 @@
     }
 
     .lines-table th {
-      background: #222;
-      color: #fff;
+      background: #fff;
+      color: #000;
       font-weight: 600;
     }
 
@@ -232,8 +232,8 @@
     }
 
     .charges-table .total {
-      background: #222;
-      color: #fff;
+      background: #fff;
+      color: #000;
       font-weight: 700;
     }
 
@@ -395,7 +395,7 @@
             <% if (logoBase64) { %>
               <% const isSE=company && company.code==='11' ; %>
                 <img src="<%= logoBase64 %>" alt="<%= company && company.name ? company.name : 'Company Logo' %>"
-                  style="height: <%= isSE ? '120px' : '100px' %>; width: auto;" />
+                  style="height: <%= isSE ? '150px' : '100px' %>; width: auto;" />
                 <% } %>
           </div>
         </div>
@@ -443,7 +443,8 @@
         <div class="left-section">
           <table class="summary-table">
             <tr>
-              <th colspan="3" class="summary-header">Summary Of Outstanding In Rupees</th>
+              <th colspan="3" class="summary-header" style="background: #fff; color: #000; font-weight: 700;">Summary Of
+                Outstanding In Rupees</th>
             </tr>
             <tr>
               <th>Customer Code</th>
@@ -512,9 +513,9 @@
       <table class="lines-table">
         <thead>
           <tr>
-            <th style="width: 8%">S.No.</th>
-            <th style="width: 62%">Description</th>
-            <th style="width: 30%">Invoice Amount</th>
+            <th style="width: 8%; background: #fff; color: #000; font-weight: 700;">S.No.</th>
+            <th style="width: 62%; background: #fff; color: #000; font-weight: 700;">Description</th>
+            <th style="width: 30%; background: #fff; color: #000; font-weight: 700;">Invoice Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -555,9 +556,9 @@
           </td>
         </tr>
         <tr>
-          <td class="label total">Total Invoice Amount</td>
-          <td class="value total">Rs. <%= invoice && invoice.totalAmount ? invoice.totalAmount.toLocaleString('en-IN',
-              {minimumFractionDigits: 2}) : '0.00' %>
+          <td class="label total" style="background: #fff; color: #000; font-weight: 700;">Total Invoice Amount</td>
+          <td class="value total" style="background: #fff; color: #000; font-weight: 700;">Rs. <%= invoice &&
+              invoice.totalAmount ? invoice.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '0.00' %>
           </td>
         </tr>
       </table>
@@ -602,7 +603,9 @@
         <div class="cell"><span class="label">IFSC:</span>
           <%= company && company.ifsc ? company.ifsc : 'ICIC0002027' %>
         </div>
-        <div class="cell"><span class="label">MICR:</span> 440229017</div>
+        <div class="cell"><span class="label">MICR:</span>
+          <%= company && company.code==='11' ? '440229017' : '' %>
+        </div>
       </div>
       <div class="bank-details">
         <div class="cell"><span class="label">Account Name:</span>
@@ -641,14 +644,18 @@
                   Nagpur - 440002, <%= company && company.state ? company.state : 'Maharashtra' %>.<br />
                     <strong>Email:</strong>
                     <%= company && company.email ? company.email : 'info@spiceexpress.co.in' %><br />
-                      <strong>Web:</strong>
-                      <%= company && company.website ? company.website : 'www.spiceexpress.in' %><br />
-                        <strong>CIN:</strong>
-                        <%= company && company.cin ? company.cin : '' %>
+                      <% if (company && company.code==='11' ) { %>
+                        <strong>Web:</strong>
+                        <%= company && company.website ? company.website : 'www.spiceexpress.in' %><br />
+                          <% } %>
+                            <strong>CIN:</strong>
+                            <%= company && company.cin ? company.cin : '' %>
               </div>
             </td>
             <td style="width: 30%; text-align: right; vertical-align: bottom;">
-              <div class="footer-badge">SPEED YOU TRUST</div>
+              <% if (company && company.code==='11' ) { %>
+                <div class="footer-badge">SPEED YOU TRUST</div>
+                <% } %>
             </td>
           </tr>
         </table>

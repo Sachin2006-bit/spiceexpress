@@ -154,11 +154,15 @@ export default function LRDetailsPage() {
               if (!lr) return;
               const token = localStorage.getItem('auth_token');
               try {
-                const res = await fetch(`/api/lr/${lr._id}/download`, {
+                // Use the full API URL from lrApi instead of relative path
+                const { API_BASE_URL } = await import('../lib/api');
+                const downloadUrl = `${API_BASE_URL}/lr/${lr._id}/download`;
+                const res = await fetch(downloadUrl, {
                   method: 'GET',
                   headers: {
                     'Authorization': `Bearer ${token}`
-                  }
+                  },
+                  credentials: 'omit'
                 });
                 if (!res.ok) throw new Error('Failed to download LR');
                 const blob = await res.blob();

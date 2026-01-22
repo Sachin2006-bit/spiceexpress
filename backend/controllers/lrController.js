@@ -36,7 +36,9 @@ export const createLR = async (req, res) => {
       numberOfArticles: body.shipmentDetails?.numberOfArticles ?? body.numberOfArticles,
       actualWeight: body.shipmentDetails?.actualWeight ?? body.actualWeight,
       chargedWeight: body.shipmentDetails?.chargedWeight ?? body.chargedWeight,
-      descriptionOfGoods: body.shipmentDetails?.descriptionOfGoods ?? body.descriptionOfGoods
+      descriptionOfGoods: body.shipmentDetails?.descriptionOfGoods ?? body.descriptionOfGoods,
+      declaredValue: body.shipmentDetails?.declaredValue ?? body.declaredValue, /* New Field */
+      expectedDeliveryDate: body.shipmentDetails?.expectedDeliveryDate ?? body.expectedDeliveryDate /* New Field */
     };
     // Charges
     const charges = {
@@ -280,6 +282,12 @@ export const updateLR = async (req, res) => {
     if (body.descriptionOfGoods !== undefined) {
       lr.shipmentDetails = { ...(lr.shipmentDetails || {}), descriptionOfGoods: body.descriptionOfGoods };
     }
+    if (body.declaredValue !== undefined) {
+      lr.shipmentDetails = { ...(lr.shipmentDetails || {}), declaredValue: body.declaredValue };
+    }
+    if (body.expectedDeliveryDate !== undefined) {
+      lr.shipmentDetails = { ...(lr.shipmentDetails || {}), expectedDeliveryDate: body.expectedDeliveryDate };
+    }
 
     // Charges and invoice (merge if present)
     if (body.charges && typeof body.charges === 'object') {
@@ -304,8 +312,10 @@ export const updateLR = async (req, res) => {
     if (!lr.consignee || !lr.consignee.name) {
       return res.status(400).json({ error: 'Missing required field: consignee.name' });
     }
-    if (!lr.customer) {
-      return res.status(400).json({ error: 'Missing required field: customer' });
+    // Customer is only required for TBB (credit billing) mode
+    const paymentType = lr.charges?.paymentType;
+    if (paymentType === 'TBB' && !lr.customer) {
+      return res.status(400).json({ error: 'Missing required field: customer (required for TBB billing)' });
     }
     // Weight validations if present
     if (lr.shipmentDetails && lr.shipmentDetails.actualWeight !== undefined && lr.shipmentDetails.actualWeight < 0) {

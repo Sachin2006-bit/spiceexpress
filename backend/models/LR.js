@@ -10,7 +10,7 @@ const lrSchema = new mongoose.Schema({
     enum: ['Booked', 'In Transit', 'Out for Delivery', 'Delivered', 'Cancelled'],
     default: 'Booked'
   },
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: false }, // Optional for PAID/TOPAY/FOC modes
   dispatchBranch: { type: String },
   company: { type: String, required: false }, // Company for access control
 
@@ -46,7 +46,9 @@ const lrSchema = new mongoose.Schema({
     numberOfArticles: { type: Number },
     actualWeight: { type: Number },
     chargedWeight: { type: Number },
-    descriptionOfGoods: { type: String }
+    descriptionOfGoods: { type: String },
+    declaredValue: { type: Number }, // Added for shipment value
+    expectedDeliveryDate: { type: Date } // Added for expected delivery
   },
 
   // Section 6: Financials and Charges

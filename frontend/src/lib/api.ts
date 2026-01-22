@@ -7,7 +7,7 @@ const LOCALHOST_URL = 'http://localhost:5000/api';
 const PRODUCTION_URL = 'https://spiceexpress-production.up.railway.app/api';
 
 // Set USE_LOCALHOST to true for local development, false for production
-const USE_LOCALHOST = false;
+const USE_LOCALHOST = true;
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (USE_LOCALHOST ? LOCALHOST_URL : PRODUCTION_URL);
 
@@ -251,6 +251,8 @@ export interface LR {
     actualWeight?: number;
     chargedWeight?: number;
     descriptionOfGoods?: string;
+    declaredValue?: number;
+    expectedDeliveryDate?: string;
   };
   charges?: {
     paymentType?: string;
@@ -306,6 +308,8 @@ export interface CreateLRData {
     actualWeight?: number;
     chargedWeight?: number;
     descriptionOfGoods?: string;
+    declaredValue?: number;
+    expectedDeliveryDate?: string;
   };
   charges: {
     paymentType?: string;
@@ -376,6 +380,8 @@ export interface LaneRate {
   to: string;
   rateType: 'perKg' | 'perPackage';
   rate: number;
+  ratePerKg?: number; // Legacy support
+  ratePerPackage?: number; // Legacy support
 }
 
 export interface DefaultCharges {
