@@ -286,11 +286,16 @@ export const downloadInvoice = async (req, res) => {
     const fs = await import('fs');
     let logoBase64 = '';
     try {
-      // Remove leading slash from logoPath to make it relative
-      const relativeLogoPath = company.logoPath.replace(/^\//, '');
-      const logoPath = path.resolve(__dirname, '../public', relativeLogoPath);
+      let logoPath;
+      let ext = 'png';
+      if (company.code === '11' || !company.code) {
+        logoPath = path.resolve(__dirname, '../temp/spice-logo-bg.png');
+      } else {
+        const relativeLogoPath = company.logoPath.replace(/^\//, '');
+        logoPath = path.resolve(__dirname, '../public', relativeLogoPath);
+        ext = company.logoPath.endsWith('.jpg') ? 'jpeg' : 'png';
+      }
       const logoBuffer = fs.readFileSync(logoPath);
-      const ext = company.logoPath.endsWith('.jpg') ? 'jpeg' : 'png';
       logoBase64 = `data:image/${ext};base64,${logoBuffer.toString('base64')}`;
     } catch (e) {
       console.warn('Could not load logo:', e.message);
@@ -304,70 +309,73 @@ export const downloadInvoice = async (req, res) => {
     let startY = margin;
 
     // Header
+    let logoActualHeight = 0;
     if (logoBase64) {
       // remove 'data:image/xxx;base64,' prefix for jsPDF
       const base64Data = logoBase64.split(',')[1];
-      const ext = company.logoPath.endsWith('.jpg') ? 'JPEG' : 'PNG';
+      const ext = (company.code === '11' || !company.code) ? 'PNG' : (company.logoPath.endsWith('.jpg') ? 'JPEG' : 'PNG');
       if (base64Data) {
          try {
            const imgProps = doc.getImageProperties(logoBase64);
-           const desiredHeight = 12; // Maintain a reasonable height
+           const desiredHeight = 15; // Maintain a reasonable height
            const desiredWidth = (imgProps.width * desiredHeight) / imgProps.height;
            doc.addImage(base64Data, ext, margin, startY, desiredWidth, desiredHeight);
+           logoActualHeight = desiredHeight;
          } catch (e) {
            // Fallback if getImageProperties fails
-           doc.addImage(base64Data, ext, margin, startY, 40, 12);
+           doc.addImage(base64Data, ext, margin, startY, 40, 15);
+           logoActualHeight = 15;
          }
       }
     }
     
     doc.setFontSize(8);
-    doc.setTextColor(200, 0, 0); // Red
+    doc.setTextColor(200, 0, 0); // Red italic text below logo
     doc.setFont("helvetica", "italic");
-    doc.text("Original For Recipient", pageWidth - margin, startY + 5, { align: "right" });
-    
-    startY += 20;
+    doc.text("Original For Recipient", margin, startY + logoActualHeight + 3);
     
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text("TAX INVOICE", pageWidth / 2, startY, { align: "center" });
-    doc.setLineWidth(0.5);
-    doc.line((pageWidth / 2) - 15, startY + 1, (pageWidth / 2) + 15, startY + 1);
+    doc.text("TAX INVOICE", pageWidth / 2, startY + (logoActualHeight > 0 ? logoActualHeight / 2 : 5), { align: "center" });
+
+    startY += logoActualHeight + 10;
     
-    startY += 10;
-    
-    // FROM block
+    // FROM Section
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.text("FROM", margin, startY);
     doc.text(company.name || invoice.supplierName || 'SPICE EXPRESS', margin, startY + 5);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    const compAddr = doc.splitTextToSize(company.address || invoice.billingAddress || '', contentWidth / 2 - 5);
-    doc.text(compAddr, margin, startY + 9);
-    let currentY = startY + 9 + (compAddr.length * 4);
-    doc.text(`State Code (LOS) : ${company.stateCode || '27'} - ${company.state || 'Maharashtra'}`, margin, currentY);
-    doc.text(`GSTIN : ${company.gstin || invoice.supplierGstin || '27AEMFS2408G1ZY'}`, margin, currentY + 4);
-    doc.text(`PAN : ${company.pan || 'AEMFS2408G'}`, margin, currentY + 8);
-    doc.text(`HSN Code : ${company.hsnCode || invoice.hsn || '9969'}`, margin, currentY + 12);
     
-    // TO block
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    const compAddrStr = company.address || invoice.billingAddress || '';
+    doc.text(doc.splitTextToSize(compAddrStr, (contentWidth / 2) - 10), margin, startY + 9);
+    
+    let fromY = startY + 20;
+    doc.text(`State Code (LOS) : ${company.stateCode || '27'} -${company.state || 'Maharashtra'}`, margin, fromY);
+    doc.text(`GSTIN : ${company.gstin || invoice.supplierGstin || ''}`, margin, fromY + 4);
+    doc.text(`PAN : ${company.pan || ''}`, margin, fromY + 8);
+    doc.text(`HSN Code : ${company.hsnCode || invoice.hsn || ''}`, margin, fromY + 12);
+
+    // TO Section
     const toX = margin + (contentWidth / 2);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.text("TO", toX, startY);
-    doc.text(customer.name || customer.company || '', toX, startY + 5);
-    doc.setFont("helvetica", "normal");
+    doc.text(customer.company || customer.name || '', toX, startY + 5);
+    
     doc.setFontSize(8);
-    const custAddr = doc.splitTextToSize(customer.address || '', contentWidth / 2 - 5);
-    doc.text(custAddr, toX, startY + 9);
-    let custY = startY + 9 + (custAddr.length * 4);
+    doc.setFont("helvetica", "normal");
+    const custAddrStr = customer.address || '';
+    doc.text(doc.splitTextToSize(custAddrStr, (contentWidth / 2) - 10), toX, startY + 9);
+    
+    let custY = startY + 20;
     doc.text(`State Code (LOS) : ${customer.state || ''}`, toX, custY);
     doc.text(`GSTIN : ${customer.gstin || ''}`, toX, custY + 4);
     doc.text(`PAN : ${customer.pan || ''}`, toX, custY + 8);
-    
-    startY = Math.max(currentY + 12, custY + 8) + 8;
+
+    const tableStartY = Math.max(fromY + 14, custY + 10) + 4;
     
     const fv = invoice.freightValue ? Number(invoice.freightValue) : 0;
     const cgst = invoice.cgst ? Number(invoice.cgst) : 0;
@@ -375,170 +383,193 @@ export const downloadInvoice = async (req, res) => {
     const igst = invoice.igst ? Number(invoice.igst) : 0;
     const pastDue = invoice.pastDue ? Number(invoice.pastDue) : 0;
     const totalAmount = invoice.totalAmount ? Number(invoice.totalAmount) : 0;
-    
-    // Left: Summary of Outstanding
-    doc.autoTable({
-      startY: startY,
-      margin: { left: margin },
-      tableWidth: contentWidth / 2 - 5,
+
+    const tableOptions = {
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0, lineColor: 0, lineWidth: 0.1 },
-      headStyles: { fillColor: 255, textColor: 0, fontStyle: 'bold', halign: 'center' },
-      head: [[{ content: 'Summary Of Outstanding In Rupees', colSpan: 3 }]],
-      body: [
-        [{ content: 'Customer Code', fontStyle: 'bold' }, { content: customer.code || invoice.customerCode || '', colSpan: 2 }],
-        [{ content: 'Trade Name', fontStyle: 'bold' }, { content: customer.company || customer.name || '', colSpan: 2 }],
-        [{ content: 'Current Bills', fontStyle: 'bold' }, { content: 'Past Payment Due', fontStyle: 'bold' }, { content: 'Total Outstanding', fontStyle: 'bold' }],
-        [{ content: `Rs. ${totalAmount.toFixed(2)}` }, { content: `Rs. ${pastDue.toFixed(2)}` }, { content: `Rs. ${totalAmount.toFixed(2)}` }]
-      ]
-    });
-    const leftFinalY = doc.lastAutoTable.finalY;
-    
-    // Right: Invoice Details
+      styles: { fontSize: 8, cellPadding: 1.5, textColor: 0, lineColor: 0, lineWidth: 0.2 },
+      margin: { left: margin, right: margin }
+    };
+
+    // Table 1: Summary / Invoice Info
     doc.autoTable({
-      startY: startY,
-      margin: { left: toX },
-      tableWidth: contentWidth / 2,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0, lineColor: 0, lineWidth: 0.1 },
-      body: [
-        [{ content: 'Place of Supply', fontStyle: 'bold' }, { content: customer.state || 'Maharashtra', halign: 'right' }],
-        [{ content: 'Invoice No.', fontStyle: 'bold' }, { content: invoice.invoiceNo || invoice.invoiceNumber || '', halign: 'right' }],
-        [{ content: 'Invoice Date', fontStyle: 'bold' }, { content: (invoice.invoiceDate || invoice.date) ? new Date(invoice.invoiceDate || invoice.date).toLocaleDateString('en-IN') : '', halign: 'right' }],
-        [{ content: 'Invoice Due Date', fontStyle: 'bold' }, { content: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN') : '', halign: 'right' }]
-      ]
-    });
-    
-    startY = Math.max(leftFinalY, doc.lastAutoTable.finalY) + 5;
-    
-    // Line Items Table
-    doc.autoTable({
-      startY: startY,
-      margin: { left: margin },
-      tableWidth: contentWidth,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0, lineColor: 0, lineWidth: 0.1 },
-      headStyles: { fillColor: 255, textColor: 0, fontStyle: 'bold' },
-      head: [['S.No.', 'Description', 'Invoice Amount']],
-      body: [
-        ['1', 'Being Transportation Charges as per annexure attached', { content: `Rs. ${fv.toFixed(2)}`, halign: 'right' }]
-      ]
-    });
-    
-    startY = doc.lastAutoTable.finalY + 3;
-    
-    // Charges Breakdown
-    doc.autoTable({
-      startY: startY,
-      margin: { left: margin },
-      tableWidth: contentWidth,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0, lineColor: 0, lineWidth: 0.1 },
+      ...tableOptions,
+      startY: tableStartY,
       columnStyles: {
-        0: { cellWidth: contentWidth * 0.7 },
-        1: { halign: 'right' }
+        0: { cellWidth: contentWidth * 0.20 },
+        1: { cellWidth: contentWidth * 0.15 },
+        2: { cellWidth: contentWidth * 0.15 },
+        3: { cellWidth: contentWidth * 0.25 },
+        4: { cellWidth: contentWidth * 0.25 }
       },
       body: [
-        ['Total Freight Amount', `Rs. ${fv.toFixed(2)}`],
-        ['CGST', `Rs. ${cgst.toFixed(2)}`],
-        ['SGST/UGST', `Rs. ${sgst.toFixed(2)}`],
-        [`IGST @ ${invoice.gstPercent || '18'}.0%`, `Rs. ${igst.toFixed(2)}`],
-        [{ content: 'Total Invoice Amount', fontStyle: 'bold' }, { content: `Rs. ${totalAmount.toFixed(2)}`, fontStyle: 'bold', halign: 'right' }]
-      ]
-    });
-    
-    startY = doc.lastAutoTable.finalY + 4;
-    
-    // Desc
-    doc.setFont("helvetica", "bold");
-    doc.text("Description of charges:", margin, startY);
-    doc.setFont("helvetica", "normal");
-    doc.text(" As per agreed terms", margin + 31, startY);
-    
-    startY += 6;
-    
-    // Amount in Words
-    doc.rect(margin, startY - 4, contentWidth, 7);
-    doc.setFont("helvetica", "bold");
-    doc.text("In Words:", margin + 2, startY + 1);
-    doc.setFont("helvetica", "normal");
-    doc.text(` Rupees ${invoice.amountInWords || 'Zero Only'}`, margin + 15, startY + 1);
-    
-    startY += 8;
-    
-    // Terms & Signature Grid
-    // Terms
-    doc.setFont("helvetica", "bold");
-    doc.text("Terms and Conditions", margin, startY);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    const coName = company.name || 'Spice Express';
-    doc.text(`1. All payments to be made only through Account Payee Cheque /DD/RTGS in favor of ${coName}.`, margin + 2, startY + 4);
-    doc.text(`2. Interest @ 2.00% per month or part thereof will be charged if the bill is not paid on due date.`, margin + 2, startY + 8);
-    doc.text(`3. All disputes and differences arising out of this will be subject to jurisdiction of Nagpur courts only.`, margin + 2, startY + 12);
-    const coEmail = company.email || 'info@spiceexpress.co.in';
-    doc.text(`4. Mail your payment advice to ${coEmail}. You can also write to ${coEmail} for any billing related issues.`, margin + 2, startY + 16, { maxWidth: contentWidth * 0.65 });
-    
-    // Signature
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.text(`For ${coName}`, pageWidth - margin, startY, { align: 'right' });
-    doc.setFont("helvetica", "normal");
-    doc.line(pageWidth - margin - 40, startY + 18, pageWidth - margin, startY + 18);
-    doc.text(`Authorized Signatory`, pageWidth - margin, startY + 22, { align: 'right' });
-    
-    startY += 28;
-    
-    // Bank Details
-    doc.autoTable({
-      startY: startY,
-      margin: { left: margin },
-      tableWidth: contentWidth,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, textColor: 0, lineColor: 0, lineWidth: 0.1 },
-      body: [
         [
-          { content: `Bank Name: ${company.bankName || 'ICICI Bank Ltd'}` },
-          { content: `IFSC: ${company.ifsc || 'ICIC0002027'}` },
-          { content: `MICR: ${company.code === '11' ? '440229017' : ''}` }
+          { content: 'Summary Of Outstanding In Rupees', colSpan: 3, styles: { fontStyle: 'bold', halign: 'center' } },
+          { content: 'Place of Supply', styles: { fontStyle: 'bold' } },
+          { content: customer.state || 'Maharashtra', styles: { halign: 'right' } }
         ],
         [
-          { content: `Account Name: ${company.accountName || 'SPICE EXPRESS'}` },
-          { content: `Account Number: ${company.accountNo || '202705002621'} (CA)`, colSpan: 2 }
+          { content: 'Customer Code', styles: { fontStyle: 'bold' } },
+          { content: customer.code || invoice.customerCode || '', colSpan: 2, styles: { halign: 'center' } },
+          { content: 'Invoice No.', styles: { fontStyle: 'bold' } },
+          { content: invoice.invoiceNo || invoice.invoiceNumber || '', styles: { halign: 'right' } }
+        ],
+        [
+          { content: 'Trade Name', styles: { fontStyle: 'bold' } },
+          { content: customer.company || customer.name || '', colSpan: 2, styles: { halign: 'center' } },
+          { content: 'Invoice Date', styles: { fontStyle: 'bold' } },
+          { content: (invoice.invoiceDate || invoice.date) ? new Date(invoice.invoiceDate || invoice.date).toLocaleDateString('en-IN') : '', styles: { halign: 'right' } }
+        ],
+        [
+          { content: 'Current Bills', styles: { fontStyle: 'bold', halign: 'center' } },
+          { content: 'Past Payment Due', styles: { fontStyle: 'bold', halign: 'center' } },
+          { content: 'Total Outstanding', styles: { fontStyle: 'bold', halign: 'center' } },
+          { content: 'Invoice Due Date', styles: { fontStyle: 'bold' } },
+          { content: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-IN') : '', styles: { halign: 'right' } }
+        ],
+        [
+          { content: `Rs. ${totalAmount.toFixed(2)}`, styles: { halign: 'center' } },
+          { content: `Rs. ${pastDue.toFixed(2)}`, styles: { halign: 'center' } },
+          { content: `Rs. ${totalAmount.toFixed(2)}`, styles: { halign: 'center' } },
+          { content: '', colSpan: 2 }
         ]
       ]
     });
+
+    // Table 2: Line Items & Totals
+    doc.autoTable({
+      ...tableOptions,
+      startY: doc.lastAutoTable.finalY - 0.2, // Overlay to merge borders
+      headStyles: { fillColor: 240, textColor: 0, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: contentWidth * 0.10, halign: 'center' },
+        1: { cellWidth: contentWidth * 0.60 },
+        2: { cellWidth: contentWidth * 0.30, halign: 'right' }
+      },
+      head: [['S.No.', 'Description', 'Invoice Amount']],
+      body: [
+        ['1', 'Being Transportation Charges as per annexure attached', { content: `Rs. ${fv.toFixed(2)}` }],
+        ['\n', '\n', '\n'],
+        ['\n', '\n', '\n'], // Empty space buffer
+        [{ content: 'Total Freight Amount', colSpan: 2, styles: { halign: 'right' } }, { content: `Rs. ${fv.toFixed(2)}` }],
+        [{ content: 'CGST', colSpan: 2, styles: { halign: 'right' } }, { content: `Rs. ${cgst.toFixed(2)}` }],
+        [{ content: 'SGST/UGST', colSpan: 2, styles: { halign: 'right' } }, { content: `Rs. ${sgst.toFixed(2)}` }],
+        [{ content: `IGST @ ${invoice.gstPercent || '18'}.0%`, colSpan: 2, styles: { halign: 'right' } }, { content: `Rs. ${igst.toFixed(2)}` }]
+      ]
+    });
+
+    // Table 3: Summary text & Total Invoice Amount
+    doc.autoTable({
+      ...tableOptions,
+      startY: doc.lastAutoTable.finalY - 0.2,
+      columnStyles: {
+        0: { cellWidth: contentWidth * 0.50 },
+        1: { cellWidth: contentWidth * 0.20 },
+        2: { cellWidth: contentWidth * 0.30, halign: 'right' }
+      },
+      body: [
+        [
+          { content: 'Description of charges: As per agreed terms', styles: { fontStyle: 'bold' } },
+          { content: 'Total Invoice Amount', styles: { fontStyle: 'bold' } },
+          { content: `Rs. ${totalAmount.toFixed(2)}`, styles: { fontStyle: 'bold' } }
+        ],
+        [
+          { content: `In Words: Rupees ${invoice.amountInWords || 'Zero Only'}`, colSpan: 3, styles: { fontStyle: 'bold' } }
+        ]
+      ]
+    });
+
+    // Manual Rectangles for Terms, Bank, and Signature to maintain strict lines
+    let finalTableY = doc.lastAutoTable.finalY - 0.2;
+    const termsHeight = 35;
     
-    startY = doc.lastAutoTable.finalY + 4;
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.2);
+    doc.rect(margin, finalTableY, contentWidth * 0.55, termsHeight);
+    doc.rect(margin + contentWidth * 0.55, finalTableY, contentWidth * 0.45, termsHeight);
     
-    // Disclaimer
+    // Terms text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Terms and Conditions", margin + 2, finalTableY + 4);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    const discCust = customer.name || customer.company || 'THE RECIPIENT';
-    const disc = `The electronic signature to this system generated invoice shall be as valid as an original signature of such party and shall be effectively binding on ${discCust.toUpperCase()}. This electronically signed invoice shall be deemed (i) to be "written" or "in writing," (ii) to have been signed and (iii) to constitute a record established and maintained in the ordinary course of business and an original written record when printed from electronic files. Such paper copies or "printouts," if introduced as evidence in any judicial, arbitral, mediation or administrative proceeding, will be admissible between the parties to the same extent as physical signed document. This is a computer generated invoice and needs no signature.`;
-    doc.text(doc.splitTextToSize(disc, contentWidth), margin, startY);
+    const coName = company.name || 'Spice Express';
+    doc.text(`1. All payments to be made only through Account Payee Cheque\n   /DD/RTGS in favor of ${coName}.`, margin + 2, finalTableY + 8);
+    doc.text(`2. Interest @ 2.00% per month or part thereof will be charged if the\n   bill is not paid on due date.`, margin + 2, finalTableY + 14);
+    doc.text(`3. All disputes and differences arising out of this will be subject to\n   jurisdiction of Nagpur courts only.`, margin + 2, finalTableY + 20);
+    const coEmail = company.email || 'info@spiceexpress.co.in';
+    doc.text(`4. Mail your payment advice to ${coEmail},\n   You can also write to ${coEmail} for any billing related\n   issues.`, margin + 2, finalTableY + 26);
     
-    // Footer
-    startY = pageHeight - margin - 15;
+    // Signature
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text(coName, margin, startY);
+    doc.text(`For ${coName}`, margin + contentWidth - 2, finalTableY + 6, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Authorized Signatory", margin + contentWidth - 2, finalTableY + termsHeight - 3, { align: 'right' });
+
+    finalTableY += termsHeight;
+    
+    // Bank row
+    const bankHeight = 12;
+    doc.rect(margin, finalTableY, contentWidth * 0.35, bankHeight); 
+    doc.rect(margin + contentWidth * 0.35, finalTableY, contentWidth * 0.65, bankHeight); 
+    
+    doc.setFontSize(7);
+    doc.text(`Bank Name: ${company.bankName || 'ICICI Bank Ltd.'}`, margin + 2, finalTableY + 4);
+    doc.text(`Account Name: ${company.accountName || 'SPICE EXPRESS'}`, margin + 2, finalTableY + 9);
+    
+    doc.text(`IFSC: ${company.ifsc || 'ICIC0002027'}           MICR: ${company.code === '11' ? '440229017' : ''}`, margin + contentWidth * 0.35 + 2, finalTableY + 4);
+    doc.text(`Account Number: ${company.accountNo || '202705002621'} (CA)`, margin + contentWidth * 0.35 + 2, finalTableY + 9);
+
+    finalTableY += bankHeight;
+
+    // Below Box Disclaimer
+    let footerStartY = finalTableY + 4;
+    doc.setFontSize(6.2); // Squeeze it slightly if long
+    const discCust = customer.name || customer.company || 'THE RECIPIENT';
+    const disc = `The electronic signature to this system generated Invoice shall be as valid as an original signature of such party and shall be effectively binding on ${discCust.toUpperCase()}. This electronically signed invoice shall be deemed (i) to be "written" or "in writing," (ii) to have been signed and (iii) to constitute a record established and maintained in the ordinary course of business and an original written record when printed from electronic files. Such paper copies or "printouts," if introduced as evidence in any judicial, arbitral, mediation or administrative proceeding, will be admissible between the parties to the same extent as physical signed document. This is a computer generated invoice and needs no signature.`;
+    doc.text(doc.splitTextToSize(disc, contentWidth), margin, footerStartY);
+
+    // Color Box & Company Footer
+    footerStartY += 14;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(coName, margin, footerStartY);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    doc.text(`Registered Office: ${company.address || 'Block D, Plot No. D 464, Martin nagar, Mankapur, Nagpur - 440002, Maharashtra.'}`, margin, startY + 4);
-    doc.text(`Email: ${coEmail}`, margin, startY + 8);
-    if (company.code === '11') {
-      doc.text(`Web: ${company.website || 'www.spiceexpress.in'}`, margin, startY + 12);
+    doc.text(`Registered Office: ${company.address || 'Block D, Plot No. D 464, Martin nagar, Mankapur, Nagpur - 440002, Maharashtra.'}`, margin, footerStartY + 4);
+    doc.text(`Email: ${coEmail}`, margin, footerStartY + 8);
+    if (company.website) {
+      doc.text(`Web: ${company.website}`, margin, footerStartY + 12);
     }
-    doc.text(`CIN: ${company.cin || ''}`, margin, startY + 16);
-    
-    if (company.code === '11') {
-      doc.setFillColor(196, 30, 58); // red
-      doc.rect(pageWidth - margin - 40, startY + 4, 40, 6, 'F');
-      doc.setTextColor(255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.text("SPEED YOU TRUST", pageWidth - margin - 20, startY + 8, { align: 'center' });
+    doc.text(`CIN: ${company.cin || ''}`, margin, footerStartY + 16);
+
+    try {
+      const footerPath = path.resolve(__dirname, '../temp/footer.png');
+      if (fs.existsSync(footerPath)) {
+        const footerBuffer = fs.readFileSync(footerPath);
+        const footerBase64Str = `data:image/png;base64,${footerBuffer.toString('base64')}`;
+        const base64Data = footerBase64Str.split(',')[1];
+        const imgProps = doc.getImageProperties(footerBase64Str);
+        // Make the footer span the entire page width and anchor exactly to the bottom edge of the paper
+        const desiredWidth = pageWidth;
+        const desiredHeight = (imgProps.height * desiredWidth) / imgProps.width;
+        doc.addImage(base64Data, 'PNG', 0, pageHeight - desiredHeight, desiredWidth, desiredHeight);
+      } else if (company.code === '11') {
+        doc.setFillColor(59, 89, 152);
+        doc.rect(pageWidth - margin - 45, footerStartY, 45, 12, 'F');
+        
+        doc.setFillColor(220, 53, 69);
+        doc.rect(pageWidth - margin - 45, footerStartY + 12, 45, 3, 'F');
+        
+        doc.setTextColor(255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text("SPEED YOU TRUST", pageWidth - margin - 22.5, footerStartY + 7, { align: 'center' });
+      }
+    } catch (e) {
+      console.warn('Could not process footer image:', e.message);
     }
 
     const pdfBuffer = doc.output('arraybuffer');
